@@ -6,16 +6,43 @@
 #include <algorithm>
 #include <iosfwd>
 
+namespace te {
+
+struct AnyListSentinalType {
+	
+};
+
+template <class Hash, class Compare>
 struct AnyList
 {
+	using value_type = AnyValue<Hash, Compare>;
+	using reference = value_type&;
+	using const_reference = const value_type&;
+	using pointer = value_type*;
+	using const_pointer = const value_type*;
+	using size_type = std::size_t;
+	using difference_type = std::ptrdiff_t;
 private:
+	using self_type = AnyList<Hash, Compare>;
+	using node_base_type = AnyNodeBase<Hash, Compare>;
+	template <class T>
+	using node_type = AnyNode<T, Hash, Compare>;
+	
 
 	template <bool IsConst>
 	struct Iterator {
-		using value_type = AnyValue;
-		using reference = std::conditional_t<IsConst, const AnyValue&, AnyValue&>;
-		using difference_type = std::ptrdiff_t;
-		using pointer = std::conditional_t<IsConst, const AnyValue*, AnyValue*>;
+		using value_type = typename self_type::value_type;
+		using reference = std::conditional_t<
+			IsConst, 
+			typename self_type::const_reference,
+			typename self_type::reference
+		>;
+		using difference_type = typename self_type::difference_type;
+		using pointer = std::conditional_t<
+			IsConst, 
+			typename self_type::const_pointer,
+			typename self_type::pointer
+		>;
 		using iterator_category = std::forward_iterator_tag;
 
 		Iterator() = default;
@@ -41,12 +68,10 @@ private:
 
 		friend bool operator==(Iterator<IsConst> left, Iterator<IsConst> right)
 		{
-			bool left_at_end = left.is_end_sentinal();
-			bool right_at_end = right.is_end_sentinal();
-			if(left_at_end)
-				return right_at_end or not *right.pos_;
-			else if(right_at_end)
-				return not *left.pos_;
+			if(left.is_end_sentinal())
+				return right.is_end();
+			else if(left.is_normal_end())
+				return right.is_end_sentinal() or (left.pos_ == right.pos_);
 			else
 				return left.pos_ == right.pos_;
 		}
@@ -82,7 +107,7 @@ private:
 		{ return not *pos_; }
 
 
-		using pos_type = std::conditional_t<IsConst, AnyNodeBase* const*, AnyNodeBase**>;
+		using pos_type = std::conditional_t<IsConst, node_base_type* const*, node_base_type**>;
 		Iterator(pos_type p): 
 			pos_(p)
 		{
@@ -91,26 +116,39 @@ private:
 		
 		Iterator<false> to_non_const() const
 		{
-			return Iterator<false>(&const_cast<AnyNodeBase*&>(*pos_));
+			return Iterator<false>(&const_cast<node_base_type*&>(*pos_));
 		}
 		
 		pos_type pos_ = nullptr;
-		friend class AnyList;
+		friend class AnyList<Hash, Compare>;
 		template <class, class, class>
 		friend class AnySet;
 	};
 
 public:
+
 	AnyList() noexcept = default;
 
-	AnyList(const AnyList&) = delete;
+	AnyList(const self_type&) = delete;
 
-	AnyList(AnyList&& other) noexcept:
+	AnyList(self_type&& other) noexcept:
 		head_(other.head_)
 	{
 		other.head_ = nullptr;
 	}
-
+	
+	AnyList& operator=(const self_type&) = delete;
+	struct MakeCopyTag{};
+	// Make copying possible, but not conventionally
+	AnyList(const self_type& other, MakeCopyTag)
+	{
+		auto it = begin();
+		for(const auto& any_v: other)
+		{
+			splice(it, any_v.clone());
+			++it;
+		}
+	}
 
 	~AnyList()
 	{
@@ -118,18 +156,19 @@ public:
 	}
 		
 	
-	AnyList& operator=(AnyList&& other) noexcept
+	self_type& operator=(self_type&& other) noexcept
 	{
 		clear();
 		head_ = other.head_;
 		other.head_ = nullptr;
+		return *this;
 	}
 
 
 	using iterator = Iterator<false>;
 	using const_iterator = Iterator<true>;
 	
-	void swap(AnyList& other)
+	void swap(self_type& other)
 	{ std::swap(head_, other.head_); }
 
 	std::size_t clear()
@@ -170,41 +209,43 @@ public:
 	static iterator emplace(const_iterator pos, std::size_t hash, Args&& ... args)
 	{
 		assert(pos.pos_);
-		std::unique_ptr<AnyNodeBase> new_node(
-			std::make_unique<AnyNode<K>>(hash, std::forward<Args>(args)...)
+		std::unique_ptr<node_base_type> new_node(
+			std::make_unique<node_type<K>>(hash, std::forward<Args>(args)...)
 		);
-		AnyNodeBase*& node_pos = *pos.to_non_const().pos_;
+		node_base_type*& node_pos = *pos.to_non_const().pos_;
 		new_node->next = node_pos;
 		node_pos = new_node.release();
 		return std::next(pos).to_non_const();
 	}
 
-	const AnyValue& front() const
+	const value_type& front() const
 	{ return *head_; }
 
-	AnyValue& front() 
+	value_type& front() 
 	{ return *head_; }
 
-	std::unique_ptr<AnyValue> pop_front()
+	std::unique_ptr<value_type> pop_front()
 	{
 		assert(not is_sentinal());
 		return pop(cbegin());
 	}
 	
-	static std::unique_ptr<AnyValue> pop(const_iterator p)
+	static std::unique_ptr<value_type> pop(const_iterator p)
 	{
-		std::unique_ptr<AnyValue> node(*p.pos_);
-		auto& pos = *p.to_non_const().pos_;
+		assert(not p.is_end());
+		std::unique_ptr<value_type> node(*p.pos_);
+		node_base_type*& pos = *p.to_non_const().pos_;
 		pos = pos->next;
-		// NOTE: node's "next" pointer is not null
+		// TODO: it *should* be okay to not set pos->next to nullptr
+		node->get_next() = nullptr;
 		return node;
 	}
 	
-	static iterator splice(const_iterator p, std::unique_ptr<AnyValue> node) noexcept
+	static iterator splice(const_iterator p, std::unique_ptr<value_type> node) noexcept
 	{
 		auto& pos = *p.to_non_const().pos_;
 		node->get_next() = pos;
-		pos = static_cast<AnyNodeBase*>(node.release());
+		pos = static_cast<node_base_type*>(node.release());
 		return p.to_non_const();
 	}
 
@@ -242,28 +283,39 @@ public:
 	bool is_sentinal() const
 	{ return head_ == any_list_sentinal; }
 
-	static AnyList get_sentinal();
+	static self_type get_sentinal() {
+		self_type tmp;
+		tmp.head_ = any_list_sentinal;
+		return tmp;
+	}
 
-	friend void swap(AnyList& left, AnyList& right)
+	friend void swap(self_type& left, self_type& right)
 	{ left.swap(right); }
 
+	static constexpr const MakeCopyTag make_copy = MakeCopyTag{};
 private:
 
-	struct AnyListSentinalType {
-		
-	};
-	static const AnyNode<AnyListSentinalType> any_list_sentinal_node;
-	static const AnyNodeBase* const any_list_sentinal;
+	static node_type<AnyListSentinalType> any_list_sentinal_node;
+	static node_base_type* const any_list_sentinal;
 	
 	// Can't use unique_ptr because iterators need to be able to 
 	// store a pointer-to-pointer.  
-	AnyNodeBase* head_{nullptr};
+	node_base_type* head_{nullptr};
+		
+	template <class, class, class>
+	friend class AnySet;
 };
 
-const AnyNode<AnyList::AnyListSentinalType> AnyList::any_list_sentinal_node = AnyNode<AnyList::AnyListSentinalType>(0);
-const AnyNodeBase* const AnyList::any_list_sentinal = &any_list_sentinal_node;
+template <class Hash, class Compare>
+AnyNode<AnyListSentinalType, Hash, Compare> AnyList<Hash, Compare>::any_list_sentinal_node = 
+	AnyNode<AnyListSentinalType, Hash, Compare>(0);
 
-bool operator==(const AnyList& left, const AnyList& right) 
+template <class Hash, class Compare>
+typename AnyList<Hash, Compare>::node_base_type* const AnyList<Hash, Compare>::any_list_sentinal 
+	= &AnyList<Hash, Compare>::any_list_sentinal_node;
+
+template <class Hash, class Compare>
+bool operator==(const AnyList<Hash, Compare>& left, const AnyList<Hash, Compare>& right) 
 {
 	auto lpos = left.begin();
 	auto rpos = right.begin();
@@ -276,10 +328,12 @@ bool operator==(const AnyList& left, const AnyList& right)
 	return lpos.is_end() and rpos.is_end();
 }
 
-bool operator!=(const AnyList& left, const AnyList& right) 
+template <class Hash, class Compare>
+bool operator!=(const AnyList<Hash, Compare>& left, const AnyList<Hash, Compare>& right) 
 { return not (left == right); }
 
-std::ostream& operator<<(std::ostream& os, const AnyList& list)
+template <class Hash, class Compare>
+std::ostream& operator<<(std::ostream& os, const AnyList<Hash, Compare>& list)
 {
 	auto pos = list.begin();
 	auto stop = list.end();
@@ -292,5 +346,8 @@ std::ostream& operator<<(std::ostream& os, const AnyList& list)
 	}
 	return os << ')';
 }
+
+} /* namespace te */
+
 
 #endif /* ANY_LIST_H */

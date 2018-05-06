@@ -9,14 +9,27 @@
 #include <optional>
 #include <variant>
 #include <ostream>
+#include <memory>
+#include <any>
+
+namespace te {
+
+struct AnyListSentinalType;
+
+template <class H, class E, class A>
+struct AnySet;
+
+template <class H, class E, class A>
+std::ostream& operator<<(std::ostream& os, const AnySet<H, E, A>& set);
 
 namespace detail {
+
 template <class S, class T>
 class is_streamable_helper
 {
 	template<class Stream, class Type>
 	static auto test(int) -> decltype( 
-		std::declval<Stream&>() << std::declval<Type>(), std::true_type() 
+		(std::declval<Stream>() << std::declval<Type>()), std::true_type() 
 	);
 
 	template<class, class>
@@ -39,7 +52,7 @@ struct is_equality_comparable<
 	T, 
 	std::enable_if_t<
 		true, 
-		decltype(std::declval<T>() == std::declval<T>(), (void)0)
+		decltype((void)(std::declval<T>() == std::declval<T>()))
 		>
 	>: std::true_type {};
 template <class T>
@@ -58,109 +71,239 @@ struct is_inequality_comparable<
 template <class T>
 inline constexpr const bool is_inequality_comparable_v = is_inequality_comparable<T>::value;
 
+
 } /* namespace detail */
 
-template <class Value>
+template <class Hash, class Compare>
+struct AnyValue;
+
+template <class T, class H, class C>
+bool is(const AnyValue<H, C>&);
+
+template <class Value, class Hash, class Compare>
 struct AnyNode;
 
+template <class Hash, class Compare>
 struct AnyNodeBase;
+	
+template <class Hash, class Compare>
+class AnyList;
 
+template <class Hash, class Compare>
+struct AnyValue;
+
+template <class T, class H, class C>
+const T* try_as(const AnyValue<H, C>& self) noexcept;
+
+template <class T, class H, class C>
+const T& as(const AnyValue<H, C>& self);
+
+
+struct copy_construction_error:
+	std::logic_error
+{
+	copy_construction_error(const std::type_info& ti):
+		std::logic_error("Attempt to copy construct type that is not copy constructible."), 
+		typeinfo(ti)
+	{
+		
+	}
+
+	const std::type_info& typeinfo;
+};
+
+template <class Hash, class Compare>
 struct AnyValue
 {
+	using self_type = AnyValue<Hash, Compare>;
 	virtual ~AnyValue() = 0; 
 
-	AnyValue(const AnyValue&) = delete;
-	AnyValue(AnyValue&&) = delete;
+	AnyValue(const self_type&) = delete;
+	AnyValue(self_type&&) = delete;
 
 	const std::type_info& typeinfo() const
 	{ return get_typeinfo(); }
 
-	template <class T>
-	const T* try_as() const noexcept;
 
 	template <class T>
-	const T& as() const;
+	friend bool operator==(const self_type& left, const T& right)
+	{
+		if(const T* p = try_as<T>(left); static_cast<bool>(p))
+			return *p == right; 
+		return false;
+	}
+	
+	template <class T>
+	friend bool operator==(const T& left, const self_type& right)
+	{
+		if(const T* p = try_as<T>(right); static_cast<bool>(p))
+			return left == *p; 
+		return false;
+	}
 
 	template <class T>
-	explicit operator T() const;
+	friend bool operator!=(const T& left, const self_type& right)
+	{
+		if(const T* p = try_as<T>(right); static_cast<bool>(p))
+			return left != *p; 
+		return true;
+	}
 
-	friend bool operator==(const AnyValue& left, const AnyValue& right)
+	template <class T>
+	friend bool operator!=(const self_type& left, const T& right)
+	{
+		if(const T* p = try_as<T>(left); static_cast<bool>(p))
+			return *p != right; 
+		return true;
+	}
+
+	friend bool operator==(const self_type& left, const self_type& right)
 	{ return left.equals(right); }
 
-	friend bool operator!=(const AnyValue& left, const AnyValue& right)
+	friend bool operator!=(const self_type& left, const self_type& right)
 	{ return left.not_equals(right); }
 
-	friend std::ostream& operator<<(std::ostream& os, const AnyValue& any_v)
+	friend bool compare(const self_type& left, const self_type& right, Compare comp)
+	{ return left.compare_to(right, comp); }
+
+	friend std::ostream& operator<<(std::ostream& os, const self_type& any_v)
 	{
 		any_v.write(os);
 		return os;
 	}
 
+
+	// std::size_t get_hash() const noexcept
+	// { return static_cast<const AnyNodeBase<Hash, Compare>*>(this)->hash; }
+
+	const std::size_t hash;
+private:
+	AnyNodeBase<Hash, Compare>* const& get_next() const noexcept
+	{ return static_cast<const AnyNodeBase<Hash, Compare>*>(this)->next; }
+
+	AnyNodeBase<Hash, Compare>*& get_next() noexcept
+	{ return static_cast<AnyNodeBase<Hash, Compare>*>(this)->next; }
+
 protected:
-	
-	AnyValue() = default;
-	std::size_t get_hash() const noexcept;
-	AnyNodeBase* const& get_next() const noexcept;
-	AnyNodeBase*& get_next() noexcept;
+	AnyValue(std::size_t hash_v):
+		hash(hash_v)
+	{
+		
+	}
 	virtual const std::type_info& get_typeinfo() const = 0;
-	virtual bool equals(const AnyValue& other) const = 0;
-	virtual bool not_equals(const AnyValue& other) const = 0;
+	virtual bool compare_to(const self_type& other, Compare comp) const = 0;
+	virtual bool equals(const self_type& other) const = 0;
+	virtual bool not_equals(const self_type& other) const = 0;
 	virtual void write(std::ostream& os) const = 0;
+	virtual std::unique_ptr<self_type> clone() const = 0;
 
 	template <class, class, class>	
 	friend class AnySet;
-	friend class AnyList;
+	friend class AnyList<Hash, Compare>;
 };
 
-AnyValue::~AnyValue() = default;
+template <class H, class C>
+std::size_t compute_hash(const AnyValue<H, C>& any_v)
+{ return any_v.hash; }
+// { return any_v.get_hash(); }
 
-template <class T>
-bool is(const AnyValue& any_v)
+template <class H, class C>
+AnyValue<H, C>::~AnyValue() = default;
+
+template <class T, class H, class C>
+bool is(const AnyValue<H, C>& any_v)
 { return any_v.typeinfo() == typeid(T); }
 
-
+template <class Hash, class Compare>
 struct AnyNodeBase:
-	protected AnyValue
+	protected AnyValue<Hash, Compare>
 {
+	using any_type = AnyValue<Hash, Compare>;
+	using self_type = AnyNodeBase<Hash, Compare>;
 
 	AnyNodeBase(std::size_t hash_v): 
-		AnyValue(), hash(hash_v), next(nullptr) 
+		any_type(hash_v), next(nullptr) 
 	{
 		
 	}
 
 	virtual ~AnyNodeBase() = default;
 
-	template <class Key, class Comp>
-	bool matches(const Key& key, std::size_t hash_value, Comp comp) const;
-
-	const std::size_t hash;
 private:
-	friend class AnyList;
-	friend class AnyValue;
-	AnyNodeBase* next;
+	friend class AnyList<Hash, Compare>;
+	friend class AnyValue<Hash, Compare>;
+	template <class, class, class>
+	friend class AnySet;
+	self_type* next;
 };
 
-
+template <class Value, bool = std::is_empty_v<Value>>
+struct AnyValueHolder;
+	
+template <class Value>
+struct AnyValueHolder<Value, true>: Value
+{
+	using Value::Value;
+	template <class ... T>
+	AnyValueHolder(T&& ... args):
+		Value(std::forward<T>(args)...)
+	{
+		
+	}
+	const Value& value() const
+	{ return *static_cast<const Value*>(this); }
+};
 
 template <class Value>
-struct AnyNode final:
-	public AnyNodeBase
+struct AnyValueHolder<Value, false>
 {
+	template <class ... T>
+	AnyValueHolder(T&& ... args):
+		value_(std::forward<T>(args)...)
+	{
+		
+	}
+	const Value& value() const
+	{ return value_; }
+private:
+	const Value value_;
+};
 	
+
+template <class Value, class Hash, class Compare>
+struct AnyNode final:
+	public AnyValueHolder<Value>,
+	public AnyNodeBase<Hash, Compare>
+{
+	using base_type = AnyNodeBase<Hash, Compare>;
+	using value_type = Value;
+	using holder_type = AnyValueHolder<value_type>;
+	using any_type = typename base_type::any_type;
+	using self_type = AnyNode<Value, Hash, Compare>;
+
 	template <class ... Args>
 	AnyNode(std::size_t hash_v, Args&& ... args):
-		AnyNodeBase(hash_v), value(std::forward<Args>(args)...)
+		holder_type(std::forward<Args>(args)...), base_type(hash_v)
 	{
 		
 	}
 	
-	bool equals(const AnyValue& other) const final override
+	template <class ... Args>
+	AnyNode(Hash hasher, Args&& ... args):
+		holder_type(std::forward<Args>(args)...),
+		base_type(hasher(this->value()))
+	{
+		assert(hasher(this->value()) == this->hash);
+	}
+	
+	virtual ~AnyNode() final override = default;
+	
+	bool equals(const any_type& other) const final override
 	{
 		if constexpr(detail::is_equality_comparable_v<Value>)
 		{
-			const Value* v = other.try_as<Value>(); 
-			return static_cast<bool>(v) and ((*v) == value);
+			const Value* v = try_as<Value>(other); 
+			return static_cast<bool>(v) and ((*v) == this->value());
 		}
 		else
 		{
@@ -168,168 +311,73 @@ struct AnyNode final:
 		}
 	}
 	
-	bool not_equals(const AnyValue& other) const final override
+	bool not_equals(const any_type& other) const final override
 	{
 		if constexpr(detail::is_equality_comparable_v<Value>)
 		{
-			const Value* v = other.try_as<Value>(); 
-			return (not static_cast<bool>(v)) or ((*v) != value);
+			const Value* v = try_as<Value>(other);
+			return (not static_cast<bool>(v)) or ((*v) != this->value());
 		}
 		else
 		{
 			return true;
 		}
+	}
+
+	bool compare_to(const any_type& other, Compare comp) const final override
+	{
+		auto* p = try_as<Value>(other);
+		if constexpr(not std::is_same_v<Value, AnyListSentinalType>)
+			return static_cast<bool>(p) and comp(*p, this->value()); 
+		else
+			return static_cast<bool>(p);
 	}
 
 	void write(std::ostream& os) const final override
 	{
 		if constexpr(detail::is_streamable_v<Value>)
+			os << this->value();
+		else
+			os << "AnyValue(typeid.name = '" << typeid(Value).name() << "', hash = " << this->hash << ')';
+	}
+
+	std::unique_ptr<any_type> clone() const final override
+	{
+		if constexpr(std::is_copy_constructible_v<Value>)
 		{
-			os << value;
+			return std::unique_ptr<any_type>(
+				static_cast<any_type*>(std::make_unique<self_type>(this->hash, this->value()).release())
+			);
 		}
 		else
 		{
-			os << "<instance of non-streamable type: typeid.name = '" 
-				<< typeid(Value).name() << "', hash = " << hash << '>';
+			throw copy_construction_error(get_typeinfo());
 		}
 	}
-
-	virtual ~AnyNode() final override = default;
 
 	const std::type_info& get_typeinfo() const final override
 	{ return typeid(Value); }
 
-	// TODO: EBO for Value?
-	const Value value;
+	friend const Value* try_as<Value>(const AnyValue<Hash, Compare>& self) noexcept;
 };
 
-std::size_t AnyValue::get_hash() const noexcept
-{ return static_cast<const AnyNodeBase*>(this)->hash; }
-
-AnyNodeBase* const& AnyValue::get_next() const noexcept
-{ return static_cast<const AnyNodeBase*>(this)->next; }
-
-AnyNodeBase*& AnyValue::get_next() noexcept
-{ return static_cast<AnyNodeBase*>(this)->next; }
-
-template <class T>
-const T* AnyValue::try_as() const noexcept
+template <class T, class H, class C>
+const T* try_as(const AnyValue<H, C>& self) noexcept
 {
-	if(is<T>(*this))
-		return std::addressof(static_cast<const AnyNode<T>*>(this)->value);
+	if(is<T>(self))
+		return std::addressof(static_cast<const AnyNode<T, H, C>*>(&self)->value());
 	else
 		return nullptr;
 }
 
-template <class T>
-const T& AnyValue::as() const
-{ return dynamic_cast<const AnyNode<T>&>(*this).value; }
-
-template <class T>
-AnyValue::operator T() const
-{ return as<T>(); }
-
-
-template <class Value, class Comp>
-bool AnyNodeBase::matches(const Value& value, std::size_t hash_value, Comp comp) const
+template <class T, class H, class C>
+const T& as(const AnyValue<H, C>& self)
 {
-	if(hash_value != hash)
-		return false;
-	const auto* stored_value = try_as<Value>();
-	if(not stored_value)
-		return false;
-	return comp(stored_value, value);
+	if(const auto* p = try_as<T>(self); static_cast<bool>(p))
+		return *p;
+	throw std::bad_cast();
 }
 
-namespace detail {
-
-	
-	template <class Visitor, class ... T>
-	using visit_result_t = std::common_type_t<std::decay_t<std::invoke_result_t<Visitor, T>>...>;
-
-	template <class Visitor, class ... T>
-	inline constexpr bool visit_returns_void_v = std::conjunction_v<
-		std::is_same<std::invoke_result_t<Visitor, T>, void> ...
-	>;
-
-	template <class Visitor, class ... T>
-	inline constexpr bool visit_inconsistently_returns_void_v = (not visit_returns_void_v<Visitor, T...>)
-		and std::disjunction_v<std::is_same<std::invoke_result_t<Visitor, T>, void> ...>;	
-
-	template <class Visitor, class ... T>
-	struct visit_result_type;
-
-} /* namespace detail */
-
-template <class T, class ... U, class Visitor, class = std::enable_if_t<not detail::visit_returns_void_v<Visitor, T, U...>>>
-std::optional<detail::visit_result_t<Visitor, T, U...>> visit(Visitor visitor, const AnyValue& any_v) 
-{
-	if(const auto* v = any_v.try_as<T>(); v)
-		return visitor(*v);
-	
-	if constexpr(sizeof...(U) > 0u)
-		return visit<U...>(visitor, any_v);
-	else
-		return std::nullopt;
-}
-
-template <class T, class ... U, class Visitor, class = std::enable_if_t<detail::visit_returns_void_v<Visitor, T, U...>>>
-bool visit(Visitor visitor, const AnyValue& any_v) 
-{
-	if(const auto* v = any_v.try_as<T>(); v)
-	{
-		visitor(*v);
-		return true;
-	}
-	
-	if constexpr(sizeof...(U) > 0u)
-	{
-		return visit<U...>(visitor, any_v);
-	}
-	else
-	{
-		return false;
-	}
-}
-
-template <class T, class ... U, class Visitor, class = std::enable_if_t<detail::visit_inconsistently_returns_void_v<Visitor, T, U...>>>
-void visit(Visitor visitor, const AnyValue& any_v) 
-{
-	static_assert(
-		not detail::visit_inconsistently_returns_void_v<Visitor, T, U...>, 
-		"Visitor incosistently returns void."
-	);
-}
-
-template <class T>
-const T& get(const AnyValue& any_v)
-{ return any_v.as<T>(); }
-
-template <class T>
-const T* try_get(const AnyValue& any_v)
-{ return any_v.try_as<T>(); }
-
-
-template <class ... T>
-std::variant<std::monostate, std::reference_wrapper<const T>...> get_one_of(const AnyValue& any_v)
-{
-	std::variant<std::monostate, std::reference_wrapper<const T>...> result;
-	visit([&](const auto& v) -> void { result = v; }, any_v);
-	return result;
-}
-
-template <class ... T>
-std::variant<std::monostate, T...> get_one_of_v(const AnyValue& any_v)
-{
-	static_assert(
-		(std::is_same_v<T, std::decay_t<T>> and ...), 
-		"Use of get_one_of_v() is a only permitted with fully std::decay'd (non-reference, non-const, etc) types."
-	);
-	std::variant<std::monostate, std::reference_wrapper<const T>...> result;
-	visit([&](const auto& v) -> void { result = v; }, any_v);
-	return result;
-}
-
-
+} /* namespace te */	
 
 #endif /* ANY_NODE_H */
