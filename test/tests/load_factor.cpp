@@ -69,9 +69,7 @@ TEST_CASE("Load Factor", "[load-factor]") {
 		REQUIRE(load_factor_satisfied(set));
 		set.max_load_factor(0.5);
 		REQUIRE(not load_factor_satisfied(set));
-		std::cout << "BEFORE: " << set.size() << ", " << set.bucket_count() << std::endl;
 		set.rehash(0);
-		std::cout << "AFTER: " << set.size() << ", " << set.bucket_count() << std::endl;
 		REQUIRE(load_factor_satisfied(set));
 	}
 

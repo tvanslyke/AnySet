@@ -20,10 +20,8 @@ TEST_CASE("Rehash", "[rehash]") {
 		REQUIRE(load_factor_satisfied(set));
 		set.max_load_factor(0.5);
 		REQUIRE(not load_factor_satisfied(set));
-		std::cout << "BEFORE: " << set.size() << ", " << set.bucket_count() << std::endl;
 		set.rehash(0);
 		REQUIRE(set.bucket_count() >= 0u);
-		std::cout << "AFTER: " << set.size() << ", " << set.bucket_count() << std::endl;
 		REQUIRE(load_factor_satisfied(set));
 		set.rehash(16);
 		REQUIRE(set.bucket_count() >= 16u);

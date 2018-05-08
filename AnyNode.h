@@ -99,10 +99,10 @@ template <class T, class H, class C>
 const T& as(const AnyValue<H, C>& self);
 
 
-struct copy_construction_error:
+struct CopyConstructionError:
 	std::logic_error
 {
-	copy_construction_error(const std::type_info& ti):
+	CopyConstructionError(const std::type_info& ti):
 		std::logic_error("Attempt to copy construct type that is not copy constructible."), 
 		typeinfo(ti)
 	{
@@ -237,47 +237,70 @@ private:
 	self_type* next;
 };
 
+
+namespace detail {
 template <class Value, bool = std::is_empty_v<Value>>
-struct AnyValueHolder;
+struct ValueHolder;
 	
 template <class Value>
-struct AnyValueHolder<Value, true>: Value
+struct ValueHolder<Value, true>: Value
 {
 	using Value::Value;
 	template <class ... T>
-	AnyValueHolder(T&& ... args):
+	ValueHolder(T&& ... args):
 		Value(std::forward<T>(args)...)
 	{
 		
 	}
-	const Value& value() const
+	const Value& value() const &
 	{ return *static_cast<const Value*>(this); }
+
+	const Value&& value() const &&
+	{ return std::move(*static_cast<const Value*>(this)); }
+
+	Value& value() &
+	{ return *static_cast<Value*>(this); }
+
+	Value&& value() &&
+	{ return std::move(*static_cast<Value*>(this)); }
 };
 
 template <class Value>
-struct AnyValueHolder<Value, false>
+struct ValueHolder<Value, false>
 {
 	template <class ... T>
-	AnyValueHolder(T&& ... args):
+	ValueHolder(T&& ... args):
 		value_(std::forward<T>(args)...)
 	{
 		
 	}
-	const Value& value() const
+
+	const Value& value() const &
 	{ return value_; }
+
+	const Value& value() const &&
+	{ return value_; }
+
+	Value& value() &
+	{ return value_; }
+
+	Value&& value() &&
+	{ return value_; }
+
 private:
-	const Value value_;
+	Value value_;
 };
 	
+} /* namespace detail */ 
 
 template <class Value, class Hash, class Compare>
 struct AnyNode final:
-	public AnyValueHolder<Value>,
+	public detail::ValueHolder<const Value>,
 	public AnyNodeBase<Hash, Compare>
 {
 	using base_type = AnyNodeBase<Hash, Compare>;
 	using value_type = Value;
-	using holder_type = AnyValueHolder<value_type>;
+	using holder_type = detail::ValueHolder<const value_type>;
 	using any_type = typename base_type::any_type;
 	using self_type = AnyNode<Value, Hash, Compare>;
 
@@ -351,7 +374,7 @@ struct AnyNode final:
 		}
 		else
 		{
-			throw copy_construction_error(get_typeinfo());
+			throw CopyConstructionError(get_typeinfo());
 		}
 	}
 

@@ -29,6 +29,7 @@ add_executable(test-any-set
 	tests/reserve.cpp
 	tests/size.cpp
 	tests/swap_member.cpp
+	tests/constructor.cpp
 )
 
 
