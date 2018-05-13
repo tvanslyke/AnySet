@@ -21,7 +21,7 @@ TEST_CASE("Rehash", "[rehash]") {
 		set.max_load_factor(0.5);
 		REQUIRE(not load_factor_satisfied(set));
 		set.rehash(0);
-		REQUIRE(set.bucket_count() >= 0u);
+		REQUIRE(set.bucket_count() > 0u);
 		REQUIRE(load_factor_satisfied(set));
 		set.rehash(16);
 		REQUIRE(set.bucket_count() >= 16u);
@@ -29,7 +29,7 @@ TEST_CASE("Rehash", "[rehash]") {
 		set.max_load_factor(0.1);
 		REQUIRE(not load_factor_satisfied(set));
 		set.rehash(0);
-		REQUIRE(set.bucket_count() >= 0u);
+		REQUIRE(set.bucket_count() > 0u);
 		REQUIRE(load_factor_satisfied(set));
 	}
 }

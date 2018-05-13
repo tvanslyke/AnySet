@@ -4,9 +4,9 @@
 TEST_CASE("Bucket", "[bucket]") {
 
 	using namespace te;
-	using int_type = int;
 	SECTION("Default-constructed set has 1 bucket, all keys map to bucket 0") {
 		any_set_t set;
+		REQUIRE(set.bucket_count() == 1u);
 		for(std::size_t i = 0; i < 10; ++i)
 		{
 			REQUIRE(set.bucket(i) == 0);

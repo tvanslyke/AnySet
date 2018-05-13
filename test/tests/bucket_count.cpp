@@ -28,7 +28,7 @@ TEST_CASE("Bucket Count", "[bucket-count]") {
 	}
 	
 	SECTION("Number of buckets is always a power of 2 greater than zero") {
-		auto is_power_of_two = [](size_type bc, size_type minm = 1) {
+		auto is_power_of_two = [](size_type bc) {
 			return ((bc & (bc - 1)) == 0u);
 		};
 		{

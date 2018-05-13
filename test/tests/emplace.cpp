@@ -30,39 +30,47 @@ TEST_CASE("Emplace", "[emplace]") {
 	using namespace std::literals;
 	SECTION("Emplacement can insert move-only types") {
 		any_set_t set;
+		set._assert_invariants();
 		{
 			auto [pos, success] = set.emplace<Emplaceable>();
+			set._assert_invariants();
 			REQUIRE(success);
 			REQUIRE(set.size() == 1u);
 			REQUIRE(as<Emplaceable>(*pos) == Emplaceable());
 		}
 		{
 			auto [pos, success] = set.emplace<Emplaceable>(5, 6.0);
+			set._assert_invariants();
 			REQUIRE(success);
 			REQUIRE(set.size() == 2u);
 			REQUIRE(as<Emplaceable>(*pos) == Emplaceable(5, 6.0));
 		}
 		{
 			auto [pos, success] = set.emplace<Emplaceable>(5, 6.0);
+			set._assert_invariants();
 			REQUIRE(not success);
 			REQUIRE(set.size() == 2u);
 			REQUIRE(as<Emplaceable>(*pos) == Emplaceable(5, 6.0));
 		}
 		any_set_t other_set;
+		other_set._assert_invariants();
 		{
 			auto [pos, success] = other_set.emplace_hint<Emplaceable>(other_set.cbegin());
+			other_set._assert_invariants();
 			REQUIRE(success);
 			REQUIRE(other_set.size() == 1u);
 			REQUIRE(as<Emplaceable>(*pos) == Emplaceable());
 		}
 		{
 			auto [pos, success] = other_set.emplace_hint<Emplaceable>(other_set.cbegin(), 5, 6.0);
+			other_set._assert_invariants();
 			REQUIRE(success);
 			REQUIRE(other_set.size() == 2u);
 			REQUIRE(as<Emplaceable>(*pos) == Emplaceable(5, 6.0));
 		}
 		{
 			auto [pos, success] = other_set.emplace_hint<Emplaceable>(other_set.cbegin(), 5, 6.0);
+			other_set._assert_invariants();
 			REQUIRE(not success);
 			REQUIRE(other_set.size() == 2u);
 			REQUIRE(as<Emplaceable>(*pos) == Emplaceable(5, 6.0));
