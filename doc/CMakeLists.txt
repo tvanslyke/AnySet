@@ -7,11 +7,11 @@ if(DOXYGEN_FOUND)
 	set(DOXYGEN_LAYOUT_FILE "DoxygenLayout.xml")
 	doxygen_add_docs(
 		docs
-		./../include/SetOperations.h
-		./../include/extra-hash.h
-		./../include/AnyHash.h
-		./../include/AnySet.h
-		./../include/AnyNode.h
-		./../CompressedPair.h 
+		./../include/anyset/SetOperations.h
+		./../include/anyset/extra-hash.h
+		./../include/anyset/AnyHash.h
+		./../include/anyset/AnySet.h
+		./../include/anyset/AnyNode.h
+		./../include/anyset/CompressedPair.h 
 	)
 endif(DOXYGEN_FOUND)

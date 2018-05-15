@@ -1,6 +1,6 @@
 #include <iostream>
 #include <utility>
-#include "extra-hash.h"
+#include "anyset/extra-hash.h"
 #include "any-set.h"
 
 template <class L, class R>

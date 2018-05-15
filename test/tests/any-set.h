@@ -1,14 +1,14 @@
 #ifndef ANY_SET_TEST_INCLUDE_H
 #define ANY_SET_TEST_INCLUDE_H
-#include "AnySet.h"
-#include "SetOperations.h"
+#include "anyset/AnySet.h"
+#include "anyset/SetOperations.h"
 #include <cstddef>
 #include <string>
 #include <vector>
 #include <array>
 #include <algorithm>
 #include <iterator>
-#include <catch/catch.hpp>
+#include "catch/catch.hpp"
 
 using any_set_t = te::AnySet<>;
 using value_type = typename te::AnySet<>::value_type;
