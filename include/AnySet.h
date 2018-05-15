@@ -725,7 +725,7 @@ public:
 	 *        
 	 * @param other - The set whose contents will be copied.
 	 *
-	 * @throws te::CopyConstructionError if @p other contains an element of non-copy-constructible
+	 * @throws te::NoCopyConstructorError if @p other contains an element of non-copy-constructible
 	 *         type.
 	 * 
 	 * @return *this;
@@ -1157,7 +1157,7 @@ public:
 	 * @return *this.
 	 *
 	 * @note If @p other contains an element whose type does not satisfy
-	 *       CopyConstructible, this function throws a te::CopyConstructionError.
+	 *       CopyConstructible, this function throws a te::NoCopyConstructorError.
 	 * 
 	 * @note If an exception is thrown while this function is executing, @p this 
 	 *       will be only partially updated.
@@ -1771,7 +1771,7 @@ public:
 	 *         the copied element.
 	 * 
 	 * @note If the value at @p pos is an instance of a type that does not satisfy
-	 *       CopyConstructible, this function throws a te::CopyConstructionError.
+	 *       CopyConstructible, this function throws a te::NoCopyConstructorError.
 	 */
 	node_handle dup(const_iterator pos) const
 	{ return pos->clone(); }
@@ -1865,7 +1865,7 @@ public:
 	 *       new element, both @p this and @p other are unmodified. (conditional rollback semantics)
 	 * 
 	 * @note If @p other is const and any value in the range [@p first, @p last) is an instance of a 
-	 *       type that does not satisfy CopyConstructible, this function throws a te::CopyConstructionError.  
+	 *       type that does not satisfy CopyConstructible, this function throws a te::NoCopyConstructorError.  
 	 *       If this occurs, only the elements preceding that value will have been added to @p this.
 	 */
 	template <class T, class = std::enable_if_t<std::is_same_v<std::decay_t<T>, self_type>>>
@@ -1909,7 +1909,7 @@ public:
 	 *       new element, both @p this and @p other are unmodified. (conditional rollback semantics)
 	 *
 	 * @note If @p other is const and the value at position @p pos is an instance of a type that does 
-	 *       not satisfy CopyConstructible, then this function throws a te::CopyConstructionError.  
+	 *       not satisfy CopyConstructible, then this function throws a te::NoCopyConstructorError.  
 	 *       If this occurs, @p this and @p other are unmodified. (conditional rollback semantics)
 	 */
 	template <class T, class = std::enable_if_t<std::is_same_v<std::decay_t<T>, self_type>>>
@@ -1936,12 +1936,12 @@ public:
 					safely_splice_at(ins_pos, ki, std::move(node)), next.to_non_const(), true
 				);
 			}
-			catch(const std::bad_alloc& e)
+			catch(...)
 			{
 				// put back the node if didn't make it in
 				if(node)
 					other.unsafe_splice_at(pos, std::move(node));
-				throw e;
+				throw;
 			}
 		}
 		else

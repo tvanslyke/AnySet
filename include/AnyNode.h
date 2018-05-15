@@ -112,8 +112,8 @@ const T& as(const AnyValue<H, C>& self);
 
 
 /**
- * @brief Exception thrown when attempting to make copies of an AnyValue instance that
- *        contains a non-copyable type.
+ * @brief Base type of NoCopyConstructorError.  Thrown when attempting to make copies of an AnyValue 
+ *        instance that contains a non-copy-constructible type.
  */
 struct CopyConstructionError:
 	std::logic_error
@@ -130,7 +130,7 @@ struct CopyConstructionError:
 		
 	}
 
-	virtual const char* what() const noexcept
+	virtual const char* what() const noexcept override 
 	{
 		// make what() visible to doxygen
 		return this->std::logic_error::what();
@@ -141,6 +141,26 @@ struct CopyConstructionError:
 	 * contained type of the AnyValue instance.
 	 */
 	const std::type_info& typeinfo;
+};
+
+/**
+ * @brief Exception thrown when attempting to make copies of an AnyValue instance that
+ *        contains an instance of non-copyable type T.
+ * 
+ * This class is provided to allow users to catch CopyConstructionErrors for a specific,
+ * known type.
+ */
+template <class T>
+struct NoCopyConstructorError final:
+	public CopyConstructionError
+{
+	static_assert(not std::is_copy_constructible_v<T>);
+
+	NoCopyConstructorError():
+		CopyConstructionError(typeid(T))
+	{
+		
+	}
 };
 
 /// @internal
@@ -494,7 +514,7 @@ public:
 		if constexpr(std::is_copy_constructible_v<Value>)
 			return make_any_value<Value, HashFn, Compare>(this->hash, this->value());
 		else
-			throw CopyConstructionError(typeinfo());
+			throw NoCopyConstructorError<Value>();
 	}
 
 	const std::type_info& typeinfo() const final override

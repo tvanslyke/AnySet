@@ -22,6 +22,10 @@ TEST_CASE("Dup", "[dup]") {
 		REQUIRE(set.contains(UniqueInt::make(6)));
 		REQUIRE_THROWS_AS(
 			set.dup(set.find(UniqueInt::make(6))),
+			const te::NoCopyConstructorError<UniqueInt>&
+		);
+		REQUIRE_THROWS_AS(
+			set.dup(set.find(UniqueInt::make(6))),
 			const te::CopyConstructionError&
 		);
 	}

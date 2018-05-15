@@ -55,6 +55,7 @@ TEST_CASE("assign", "[assign]") {
 		any_set_t set(string_names.begin(), string_names.end());
 		any_set_t moved({1, 2, 3});
 		set.insert(UniqueInt::make(1));
+		REQUIRE_THROWS_AS(moved = set, const te::NoCopyConstructorError<UniqueInt>&);
 		REQUIRE_THROWS_AS(moved = set, const te::CopyConstructionError&);
 	}
 

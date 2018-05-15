@@ -151,6 +151,10 @@ TEST_CASE("SpliceOrCopy", "[splice-or-copy]") {
 			// Copying non-copyable types throws a te::CopyConstructionError
 			REQUIRE_THROWS_AS(
 				other.splice_or_copy(set, set.find(UniqueInt::make(10))),
+				const te::NoCopyConstructorError<UniqueInt>&
+			);
+			REQUIRE_THROWS_AS(
+				other.splice_or_copy(set, set.find(UniqueInt::make(10))),
 				const te::CopyConstructionError&
 			);
 		}
