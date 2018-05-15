@@ -167,6 +167,11 @@ public:
 			
 		}
 
+		const_iterator& operator=(const iterator& other)
+		{
+			return *this = const_iterator(other);
+		}
+
 		using const_list_iterator::const_list_iterator;
 		using const_list_iterator::operator=;
 	private:
@@ -532,6 +537,9 @@ public:
 		max_load_factor_(other.max_load_factor_)
 	{
 		fix_table_after_move();
+		assert(other.empty());
+		if(other.table_.size() == 0u)
+			other.table_.assign(1u, iterator());
 	}
 
 	/**
@@ -548,6 +556,9 @@ public:
 		max_load_factor_(other.max_load_factor_)
 	{
 		fix_table_after_move();
+		assert(other.empty());
+		if(other.table_.size() == 0u)
+			other.table_.assign(1u, iterator());
 	}
 
 	/**
@@ -737,6 +748,9 @@ public:
 		table_ = std::move(other.table_);
 		max_load_factor_ = std::move(other.max_load_factor_);
 		fix_table_after_move();
+		assert(other.empty());
+		if(other.table_.size() == 0u)
+			other.table_.assign(1u, iterator());
 		return *this;
 	}
 
@@ -1333,10 +1347,6 @@ public:
 	template <class T>
 	bool contains(const T& value) const
 	{
-		static_assert(
-			not std::is_same_v<value_type, T>, 
-			"Use AnySet::contains_value() to check if an AnySet contains an instance of AnyValue."
-		);
 		return count(value);
 	}
 	
@@ -1859,15 +1869,19 @@ public:
 	 *       If this occurs, only the elements preceding that value will have been added to @p this.
 	 */
 	template <class T, class = std::enable_if_t<std::is_same_v<std::decay_t<T>, self_type>>>
-	std::pair<iterator, iterator> splice_or_copy(
-		T&& other, const_iterator first, const_iterator last
-	)
+	auto splice_or_copy(T&& other, const_iterator first, const_iterator last)
+		-> std::pair<decltype(other.begin()), decltype(other.begin())> 
 	{
+		if(first == last)
+			return std::make_pair(first.to_non_const(), last.to_non_const());
 		preemptive_reserve(std::distance(first, last));
 		auto pos = first;
-		while(pos != last)
+		bool done = false;
+		do {
+			done = (std::next(pos) == last);
 			std::tie(std::ignore, pos, std::ignore) = splice_or_copy(std::forward<T>(other), pos);
-		return std::make_pair(first, pos);
+		} while(not done);
+		return std::make_pair(first.to_non_const(), pos.to_non_const());
 	}
 
 	/**
@@ -1909,14 +1923,17 @@ public:
 		auto ins_pos = ins_pos_.to_non_const();
 		if(found)
 			return tuple_t(ins_pos, std::next(pos).to_non_const(), false);
-		if constexpr(std::is_rvalue_reference_v<decltype(other)>)
+		if constexpr(
+			std::is_rvalue_reference_v<decltype(other)>
+			and not std::is_const_v<std::remove_reference_t<decltype(other)>>
+		)
 		{
 			auto [node, next] = other.pop(pos);
 			try
 			{
 				assert(load_factor_satisfied());
-				return std::make_tuple(
-					safely_splice_at(ins_pos, ki, std::move(node)), next, true
+				return tuple_t(
+					safely_splice_at(ins_pos, ki, std::move(node)), next.to_non_const(), true
 				);
 			}
 			catch(const std::bad_alloc& e)
@@ -1930,8 +1947,10 @@ public:
 		else
 		{
 			assert(load_factor_satisfied());
-			return std::make_tuple(
-				safely_splice_at(ins_pos, ki, other.dup(pos)), std::next(pos), true
+			return tuple_t(
+				safely_splice_at(ins_pos, ki, other.dup(pos)), 
+				std::next(pos).to_non_const(), 
+				true
 			);
 		}
 	}
@@ -2170,7 +2189,8 @@ private:
 		
 		if(not found)
 		{
-			if constexpr(std::is_copy_constructible_v<ValueType>)
+			// if constexpr(std::is_copy_constructible_v<ValueType>)
+			if constexpr(std::is_constructible_v<ValueType, decltype(value)>)
 			{
 				if(not existing)
 				{

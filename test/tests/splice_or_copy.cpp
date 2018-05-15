@@ -1,6 +1,6 @@
 #include "any-set.h"
 
-TEST_CASE("Splice", "[splice]") {
+TEST_CASE("SpliceOrCopy", "[splice-or-copy]") {
 
 	using namespace te;
 	using namespace std::literals;
@@ -130,7 +130,7 @@ TEST_CASE("Splice", "[splice]") {
 				REQUIRE(std::next(pos) == next);
 				REQUIRE(other.contains(i));
 				std::array<int, 10> expect{0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
-				REQUIRE(std::is_permutation(set.begin, set.end(), expect.begin(), expect.end()));
+				REQUIRE(std::is_permutation(set.begin(), set.end(), expect.begin(), expect.end()));
 			}
 			for(int i: {5, 6, 7, 8, 9})
 			{
@@ -141,15 +141,18 @@ TEST_CASE("Splice", "[splice]") {
 				REQUIRE(std::next(pos) == next);
 				REQUIRE(other.contains(i));
 				std::array<int, 10> expect{0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
-				REQUIRE(std::is_permutation(set.begin, set.end(), expect.begin(), expect.end()));
+				REQUIRE(std::is_permutation(set.begin(), set.end(), expect.begin(), expect.end()));
 			}
 		}
 		{
 			any_set_t set({0, 1, 2, 3, 4, 5, 6, 7, 8, 9});
 			any_set_t other({0, 1, 2, 3, 4});
-			set.insert(set.emplace<std::unique_ptr<int>>(10));
+			set.insert(UniqueInt::make(10));
 			// Copying non-copyable types throws a te::CopyConstructionError
-			REQUIRE_THROWS_AS(other.splice_or_copy(set, set.find(std::make_unique<int>>(10))), te::CopyConstructionError);
+			REQUIRE_THROWS_AS(
+				other.splice_or_copy(set, set.find(UniqueInt::make(10))),
+				const te::CopyConstructionError&
+			);
 		}
 	}
 }

@@ -43,4 +43,20 @@ TEST_CASE("assign", "[assign]") {
 		cpy._assert_invariants();
 		moved._assert_invariants();
 	}
+	
+	SECTION("Move assignment does not throw a te::CopyConstructionError.") {
+		any_set_t set(string_names.begin(), string_names.end());
+		any_set_t moved({1, 2, 3});
+		set.insert(UniqueInt::make(1));
+		moved = std::move(set);
+	}
+
+	SECTION("Copy assignment throws a te::CopyConstructionError if copying a non-copyable type.") {
+		any_set_t set(string_names.begin(), string_names.end());
+		any_set_t moved({1, 2, 3});
+		set.insert(UniqueInt::make(1));
+		REQUIRE_THROWS_AS(moved = set, const te::CopyConstructionError&);
+	}
+
+
 }

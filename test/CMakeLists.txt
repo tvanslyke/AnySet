@@ -12,6 +12,8 @@ add_executable(test-any-set
 	tests/bucket_count.cpp 
 	tests/bucket.cpp 
 	tests/clear.cpp
+	tests/constructor.cpp
+	tests/contains.cpp
 	tests/count.cpp
 	tests/dup.cpp
 	tests/emplace.cpp
@@ -34,7 +36,6 @@ add_executable(test-any-set
 	tests/splice.cpp
 	tests/splice_or_copy.cpp
 	tests/swap_member.cpp
-	tests/constructor.cpp
 )
 
 
