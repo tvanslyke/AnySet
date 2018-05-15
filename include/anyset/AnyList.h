@@ -116,9 +116,9 @@ private:
 		
 		pos_type pos_ = nullptr;
 
-		friend class AnyList<Hash, Compare>;
+		friend struct AnyList<Hash, Compare>;
 		template <class, class, class>
-		friend class ::te::AnySet;
+		friend struct ::te::AnySet;
 	};
 
 public:

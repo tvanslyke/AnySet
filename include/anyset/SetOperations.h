@@ -18,7 +18,7 @@ template <class T>
 inline constexpr const bool is_any_set_v = is_any_set<T>::value;
 
 template <class Op, class Pred, class T, class ... U>
-decltype(auto) select_and_invoke(Op&& op, Pred pred, T&& first)
+decltype(auto) select_and_invoke(Op&& op, [[maybe_unused]] Pred pred, T&& first)
 {
 	return std::invoke(std::forward<Op>(op), std::forward<T>(first));
 }

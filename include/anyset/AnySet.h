@@ -132,7 +132,7 @@ public:
 				static_cast<const list_iterator&>(*this).to_non_const()
 			); 
 		}
-		friend class AnySet;
+		friend struct AnySet;
 	};
 
 	/**
@@ -182,7 +182,7 @@ public:
 				static_cast<const const_list_iterator&>(*this).to_non_const()
 			); 
 		}
-		friend class AnySet;
+		friend struct AnySet;
 	};
 
 private:
@@ -310,7 +310,7 @@ private:
 		std::size_t bucket_{0};
 		std::size_t mask_{0};
 		template <class, class, class>
-		friend class AnySet;
+		friend struct AnySet;
 	};
 	
 public:

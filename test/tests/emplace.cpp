@@ -3,10 +3,6 @@
 #include "anyset/extra-hash.h"
 #include "any-set.h"
 
-template <class L, class R>
-std::ostream& std::operator<<(std::ostream& os, const std::pair<L, R>& p)
-{ return os << "std::pair(" << p.first << ", " << p.second << ')'; }
-
 using pair_t = std::pair<int, double>;
 
 struct Emplaceable:

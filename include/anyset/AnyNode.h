@@ -78,7 +78,7 @@ template <class Value, class HashFn, class Compare>
 struct AnyValueLink;
 
 template <class HashFn, class Compare>
-class AnyList;
+struct AnyList;
 
 } /* namespace detail */
 /// @endinternal
@@ -422,8 +422,8 @@ public:
 private:
 	self_type* next{nullptr};
 	template <class, class, class>	
-	friend class AnySet;
-	friend class detail::AnyList<HashFn, Compare>;
+	friend struct AnySet;
+	friend struct detail::AnyList<HashFn, Compare>;
 
 };
 
@@ -533,7 +533,7 @@ private:
 	const link_type&& as_link() const&& noexcept
 	{ return static_cast<const link_type&&>(*this); }
 
-	friend const Value* try_as<Value>(const AnyValue<HashFn, Compare>& self) noexcept;
+	friend const Value* try_as<Value>(const AnyValue<HashFn, Compare>& self);
 };
 
 /**
@@ -562,7 +562,7 @@ struct AnyValueLink final:
 	public ConstValueHolder<Value>,
 	public TypedValue<Value, HashFn, Compare>
 {
-	friend class TypedValue<Value, HashFn, Compare>;
+	friend struct TypedValue<Value, HashFn, Compare>;
 	using self_type = AnyValueLink<Value, HashFn, Compare>;
 	using holder_type = ConstValueHolder<Value>;
 	using base_type = TypedValue<Value, HashFn, Compare>;
