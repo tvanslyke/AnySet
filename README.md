@@ -3,9 +3,12 @@
 
 
 ## Documentation
-
+The documentation can be found [here](https://tvanslyke.github.io/AnySetDocs/html/).
+* [te::AnySet Documentation](https://tvanslyke.github.io/AnySetDocs/html/structte_1_1AnySet.html)
+* [te::AnyValue Documentation](https://tvanslyke.github.io/AnySetDocs/html/structte_1_1AnyValue.html)
 
 ## Installation 
+
 
 ### Prerequisites
 
