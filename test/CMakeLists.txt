@@ -7,11 +7,13 @@ include_directories("./../include")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0 -Wall -Wextra")
 add_executable(test-any-set
 	tests/test-main.cpp
+	tests/assign.cpp
 	tests/bucket_size.cpp
 	tests/bucket_count.cpp 
 	tests/bucket.cpp 
 	tests/clear.cpp
 	tests/count.cpp
+	tests/dup.cpp
 	tests/emplace.cpp
 	tests/empty.cpp
 	tests/eq.cpp
@@ -25,9 +27,12 @@ add_executable(test-any-set
 	tests/local_iterators.cpp
 	tests/max_bucket_count.cpp
 	tests/max_load_factor.cpp
+	tests/push-pop.cpp
 	tests/rehash.cpp
 	tests/reserve.cpp
 	tests/size.cpp
+	tests/splice.cpp
+	tests/splice_or_copy.cpp
 	tests/swap_member.cpp
 	tests/constructor.cpp
 )

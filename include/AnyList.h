@@ -6,11 +6,8 @@
 #include <algorithm>
 #include <iosfwd>
 
-namespace te {
-
-struct AnyListSentinalType {
-	
-};
+/// @internal
+namespace te::detail {
 
 template <class Hash, class Compare>
 struct AnyList
@@ -121,7 +118,7 @@ private:
 
 		friend class AnyList<Hash, Compare>;
 		template <class, class, class>
-		friend class AnySet;
+		friend class ::te::AnySet;
 	};
 
 public:
@@ -330,8 +327,6 @@ private:
 	value_type* head_{nullptr};
 	value_type** tail_{&head_};
 	size_type count_{0u};
-	template <class, class, class>
-	friend class AnySet;
 };
 
 template <class Hash, class Compare>
@@ -352,22 +347,8 @@ template <class Hash, class Compare>
 bool operator!=(const AnyList<Hash, Compare>& left, const AnyList<Hash, Compare>& right) 
 { return not (left == right); }
 
-template <class Hash, class Compare>
-std::ostream& operator<<(std::ostream& os, const AnyList<Hash, Compare>& list)
-{
-	auto pos = list.begin();
-	auto stop = list.end();
-	os << "AnyList(";
-	if(pos != stop)
-	{
-		os << *pos++;
-		while(pos != stop)
-			os << ", " << *pos++;
-	}
-	return os << ')';
-}
+} /* namespace te::detail */
 
-} /* namespace te */
-
+/// @endinternal
 
 #endif /* ANY_LIST_H */

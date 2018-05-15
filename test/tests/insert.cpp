@@ -150,12 +150,12 @@ TEST_CASE("Insert", "[insert]") {
 		REQUIRE(set1.size() == string_names.size());
 		REQUIRE(set2.size() == string_names.size());
 		REQUIRE(set3.size() == string_names.size());
-		set1.insert({1, 2, 3, 4});
+		REQUIRE(set1.insert({1, 2, 3, 4}) == 4u);
 		REQUIRE(set1.size() == (string_names.size() + 4u));
-		set2.insert(1, 2, 3, 4);
+		REQUIRE(set2.insert(1, 2, 3, 4).all());
 		REQUIRE(set2.size() == (string_names.size() + 4u));
 		std::array<int, 4> tmp{1, 2, 3, 4};
-		set3.insert(tmp.begin(), tmp.end());
+		REQUIRE(set3.insert(tmp.begin(), tmp.end()) == 4u);
 		
 		REQUIRE(set1 == set2);
 		REQUIRE(set1 == set3);
@@ -185,4 +185,31 @@ TEST_CASE("Insert", "[insert]") {
 		}
 		
 	}
+	SECTION("Vararg insertion reports which elements were successfully inserted via a bitset") {
+		{
+			any_set_t set(std::make_tuple(1, 2, 3, 4, 5));
+			auto bs = set.insert(0, 1, 2, 3, 4, 5, 6);
+			REQUIRE(bs.size() == 7u);
+			REQUIRE(bs[0]);
+			REQUIRE(not bs[1]);
+			REQUIRE(not bs[2]);
+			REQUIRE(not bs[3]);
+			REQUIRE(not bs[4]);
+			REQUIRE(not bs[5]);
+			REQUIRE(bs[6]);
+		}
+		{
+			any_set_t set(std::make_tuple(10, 20, 30, 40, 50));
+			auto bs = set.insert(0, 1, 2, 3, 4, 5, 6);
+			REQUIRE(bs.size() == 7u);
+			REQUIRE(bs.all());
+			bs = set.insert(0, 1, 2, 3, 4, 5, 6);
+			REQUIRE(bs.none());
+			auto bs2 = set.insert(10, 20, 30, 40, 50);
+			REQUIRE(bs2.size() == 5u);
+			REQUIRE(bs2.none());
+		}
+	}
 }
+
+

@@ -9,7 +9,21 @@
 #include <algorithm>
 #include <numeric>
 #include <type_traits>
+#include <bitset>
 #include "AnyHash.h"
+#include "CompressedPair.h"
+
+/**
+ * @mainpage AnySet Docs
+ * 
+ * AnySet is a [std::unordered_set<>](http://en.cppreference.com/w/cpp/container/unordered_set)-like 
+ * container that can hold instances of any constructible type.  AnySet uses type erasure to store 
+ * values of arbitrary types uniformly.
+ */
+
+
+/// @defgroup AnySet-Module
+/// @brief Primary classes and utility functions for AnySet.
 
 namespace te {
 
@@ -30,92 +44,7 @@ struct is_iterator<T, std::enable_if_t<!std::is_same_v<typename std::iterator_tr
 template <class T>
 inline constexpr const bool is_iterator_v = is_iterator<T>::value;
 
-
-template <class T>
-struct CompressedPairBase:
-	private ValueHolder<T>
-{
-	template <class ... Args>
-	CompressedPairBase(Args&& ... args):
-		ValueHolder<T>(std::forward<Args>(args)...)
-	{
-		
-	}
-
-	const T& first() const &
-	{ return get_value(static_cast<const ValueHolder<T>&>(*this)); }
-
-	const T&& first() const &&
-	{ return std::move(get_value(std::move(static_cast<const ValueHolder<T>&&>(*this)))); }
-
-	T& first() &
-	{ return get_value(static_cast<ValueHolder<T>&>(*this)); }
-
-	T&& first() &&
-	{ return std::move(get_value(static_cast<ValueHolder<T>&&>(*this).value())); }
-
-};
-
 } /* namespace detail */
-
-template <class T, class U>
-struct CompressedPair:
-	public detail::CompressedPairBase<T>,
-	private ValueHolder<U>
-{
-private:
-	using left_base = detail::CompressedPairBase<T>;
-	using right_base = ValueHolder<U>;
-	using self_type = CompressedPair<T, U>;
-public:
-	constexpr CompressedPair() = default;
-
-	template <
-		class Left,
-		class Right,
-		class = std::enable_if_t<std::is_same_v<std::decay_t<Left>, T>>,
-		class = std::enable_if_t<std::is_same_v<std::decay_t<Right>, U>>
-	>
-	CompressedPair(Left&& left, Right&& right):
-		left_base(std::forward<Left>(left)), right_base(std::forward<Right>(right))
-	{
-		
-	}
-	
-	using left_base::first;
-
-	const U& second() const &
-	{ return get_value(static_cast<const ValueHolder<U>&>(*this)); }
-
-	const U&& second() const &&
-	{ return std::move(get_value(static_cast<const ValueHolder<U>&&>(*this))); }
-
-	U& second() &
-	{ return get_value(static_cast<ValueHolder<U>&>(*this)); }
-
-	U&& second() &&
-	{ return std::move(get_value(static_cast<ValueHolder<U>&&>(*this))); }
-
-	void swap(CompressedPair& other) 
-		noexcept(std::is_nothrow_swappable_v<T> and std::is_nothrow_swappable_v<U>)
-	{
-		using std::swap;
-		swap(first(), other.first());
-		swap(second(), other.second());
-	}
-};
-
-template <class T, class U>
-CompressedPair<std::decay_t<T>, std::decay_t<U>> make_compressed_pair(T&& left, U&& right)
-{
-	return CompressedPair<std::decay_t<T>, std::decay_t<U>>(
-		std::forward<T>(left), std::forward<U>(right)
-	);
-}
-
-template <class T, class U>
-void swap(CompressedPair<T, U>& left, CompressedPair<T, U>& right) noexcept(noexcept(left.swap(right)))
-{ left.swap(right); }
 
 /**
  * @brief 
@@ -128,7 +57,9 @@ void swap(CompressedPair<T, U>& left, CompressedPair<T, U>& right) noexcept(noex
  * Container elements may not be modified (even by non const iterators) since modification could change an 
  * element's hash and corrupt the container.
  * 
- * AnySet meets the requirements Container, AllocatorAwareContainer, UnorderedAssociativeContainer.
+ * AnySet meets the requirements of [Container](http://en.cppreference.com/w/cpp/concept/Container), 
+ * [AllocatorAwareContainer](http://en.cppreference.com/w/cpp/concept/AllocatorAwareContainer), and
+ * [UnorderedAssociativeContainer](http://en.cppreference.com/w/cpp/concept/UnorderedAssociativeContainer).
  * 
  * @remark In order to provide certain functionality functionality and mimic the behavior of similar standard
  *         containers (such as std::unordered_set<>), AnySet must sacrifice some static type safety in the name
@@ -136,35 +67,56 @@ void swap(CompressedPair<T, U>& left, CompressedPair<T, U>& right) noexcept(noex
  *         is made to copy construct or assign (or similar) from an AnySet instance that contains instances of 
  *         non-copy-constructible types, an exception is thrown.  
  * 
- * @tparam Hash      - The type of the function object to use when computing the hash codes of elements.
- * @tparam KeyEqual  - The type of the function object to use when equality between elements.
+ * @tparam HashFn    - The type of the function object to use when computing the hash codes of elements.
+ * @tparam KeyEqual  - The type of the function object to use when comparing elements for equality.
  * @tparam Allocator - The type of the allocator to use when allocating the internal bucket table.
  * 
  * @remark The STL's allocator model is too rigid for AnySet to sanely support customized allocation of its internal
- *         nodes.  Thus its internal elements/nodes are simply allocated using std::make_unique (effectively using
+ *         nodes.  Thus its internal elements/nodes are simply allocated using std::make_unique() (effectively using
  *         the keyword 'new').  Allocator support is only provided for the internal bucket table.
+ *
+ * @see AnyValue - User-visible @p value_type for AnySet instances.
+ * @see AnyHash  - The default value of HashFn.  It is intended to be sufficiently extensible such that users 
+ *                 should not need to roll their own HashFn types.
+ *
+ * @ingroup AnySet-Module
  */
 template <
-	class Hash = AnyHash,
+	class HashFn = AnyHash,
 	class KeyEqual = std::equal_to<>,
-	class Allocator = std::allocator<AnyValue<Hash, KeyEqual>>
+	class Allocator = std::allocator<AnyValue<HashFn, KeyEqual>>
 >
 struct AnySet:
-	private CompressedPair<Hash, KeyEqual>
+	private CompressedPair<HashFn, KeyEqual>
 {
 private:
-	using self_type = AnySet<Hash, KeyEqual, Allocator>;
-	using list_type = AnyList<Hash, KeyEqual>;
-	using table_allocator = typename std::allocator_traits<Allocator>::template rebind_alloc<list_type>;
+	using self_type = AnySet<HashFn, KeyEqual, Allocator>;
+	using list_type = detail::AnyList<HashFn, KeyEqual>;
 	using list_iterator = typename list_type::iterator;
 	using const_list_iterator = typename list_type::const_iterator;
 
 public:
-	/// Iterator type returned from non-const operations on AnySet instances.
+	/**
+	 * @brief Forward iterator type returned from non-const operations on AnySet instances.
+	 * 
+	 * The iterator essentially wraps an `AnyValue**` that points into a linked list.  The
+	 * decision to use a pointer-to-pointer makes erasure and insertion simpler to implement
+	 * but makes iterator invalidation a little less intuitive.  See specific AnySet member 
+	 * functions for details regarding iterator invalidation.
+	 * 
+	 * @see AnySet
+	 * @see const_iterator
+	 */ 
 	struct iterator:
 		public list_iterator
 	{
-		using list_iterator::Iterator;
+		using value_type        = typename AnySet::value_type;
+		using reference         = typename AnySet::reference;
+		using pointer           = typename AnySet::pointer;
+		using difference_type   = typename AnySet::difference_type;
+		using iterator_category = std::forward_iterator_tag;
+
+		using list_iterator::list_iterator;
 		using list_iterator::operator=;
 
 		iterator(const list_iterator& it):
@@ -172,22 +124,36 @@ public:
 		{
 			
 		}
-
+	private:
+		
 		iterator to_non_const() const
 		{ 
 			return iterator(
 				static_cast<const list_iterator&>(*this).to_non_const()
 			); 
 		}
-
+		friend class AnySet;
 	};
 
-	/// Iterator type returned from const operations on AnySet instances.
+	/**
+	 * @brief Forward iterator type returned from const operations on AnySet instances.
+	 * 
+	 * The iterator essentially wraps an `AnyValue* const*` that points into a linked list.  The
+	 * decision to use a pointer-to-pointer makes erasure and insertion simpler to implement
+	 * but makes iterator invalidation a little less intuitive.  See specific AnySet member 
+	 * functions for details regarding iterator invalidation.
+	 * 
+	 * @see AnySet
+	 * @see iterator 
+	 */ 
 	struct const_iterator:
 		public const_list_iterator
 	{
-		using const_list_iterator::Iterator;
-		using const_list_iterator::operator=;
+		using value_type        = typename AnySet::value_type;
+		using reference         = typename AnySet::const_reference;
+		using pointer           = typename AnySet::const_pointer;
+		using difference_type   = typename AnySet::difference_type;
+		using iterator_category = std::forward_iterator_tag;
 
 		const_iterator(const const_list_iterator& it):
 			const_list_iterator(it)
@@ -201,18 +167,23 @@ public:
 			
 		}
 
+		using const_list_iterator::const_list_iterator;
+		using const_list_iterator::operator=;
+	private:
+
 		iterator to_non_const() const
 		{ 
 			return iterator(
 				static_cast<const const_list_iterator&>(*this).to_non_const()
 			); 
 		}
-
+		friend class AnySet;
 	};
 
 private:
+	using table_allocator = typename std::allocator_traits<Allocator>::template rebind_alloc<iterator>;
 	using vector_type = std::vector<iterator, table_allocator>;
-	using pair_type = CompressedPair<Hash, KeyEqual>;
+	using pair_type = CompressedPair<HashFn, KeyEqual>;
 	using vector_iterator = typename vector_type::iterator;
 	using const_vector_iterator = typename vector_type::const_iterator;
 
@@ -225,15 +196,15 @@ private:
 
 public:
 	/// AnyValue.
-	using value_type = AnyValue<Hash, KeyEqual>;
+	using value_type = AnyValue<HashFn, KeyEqual>;
 	/// Size type.
 	using size_type = typename vector_type::size_type;
 	/// Difference type.
 	using difference_type = typename vector_type::difference_type;
 	/// Key equality comparator type.
 	using key_equal = KeyEqual;
-	/// Hash function type.
-	using hasher = Hash;
+	/// %Hash function type.
+	using hasher = HashFn;
 	/// Allocator type.
 	using allocator_type = Allocator;
 	/// AnyValue.  Here for consistency with std::unordered_set.
@@ -337,11 +308,13 @@ private:
 		friend class AnySet;
 	};
 	
-public:	
+public:
+	/// Iterator type suitable for traversal through an individual bucket.
 	using local_iterator = BucketIterator<false>;
+	/// Const iterator type suitable for traversal through an individual bucket.
 	using const_local_iterator = BucketIterator<true>;
 
-	void _assert_invariants() const
+	void _assert_invariants(bool check_load_factor = false) const
 	{
 		list_._assert_invariants();
 		assert(table_size() > 0u);
@@ -352,8 +325,21 @@ public:
 		assert(static_cast<size_type>(iter_dist) == size());
 		assert(std::all_of(table_.begin(), table_.end(), [](const auto& v){ return v.is_null() or not v.is_end();}));
 		for(size_type i = 0; i < bucket_count(); ++i)
+		{
+			// each bucket is sorted WRT hash values of the nodes in the bucket
 			assert(std::is_sorted(begin(i), end(i), [](const auto& l, const auto& r){ return l.hash < r.hash; }));
+			assert(std::all_of(begin(i), end(i), [&](const auto& v){ return bucket_index(v.hash) == i; }));
+		}
+		// the load factor is allowed to be not satisfied if the user changed the max_load_factor().
+		// we only do this assertion when asked to
+		if(check_load_factor)
+			assert(load_factor_satisfied());
 	}
+
+	~AnySet() = default;
+
+	/// @name Constructors
+	/// @{
 
 	/**
 	 * @brief Constructs an empty set with 1 bucket.  Sets max_load_factor() to 1.0.
@@ -363,13 +349,13 @@ public:
 	/**
 	 * @brief Construct an empty AnySet instance.  Sets max_load_factor() to 1.0.
 	 * @param bucket_count - Minimum number of buckets to initialize the set with.
-	 * @param hash         - Hash function to initialize the set with.
+	 * @param hash         - %Hash function to initialize the set with.
 	 * @param equal        - Equality comparison function to initialize the set with.
 	 * @param alloc        - Allocator to initialize the set with.
 	 */
 	explicit AnySet(
 		size_type bucket_count,
-		const Hash& hash = Hash(),
+		const HashFn& hash = HashFn(),
 		const KeyEqual& equal = KeyEqual(),
 		const Allocator& alloc = Allocator()
 	):
@@ -385,7 +371,7 @@ public:
 	 * @param alloc        - Allocator to initialize the set with.
 	 */
 	AnySet(size_type bucket_count, const Allocator& alloc):
-		AnySet(bucket_count, Hash(), KeyEqual(), alloc) 
+		AnySet(bucket_count, HashFn(), KeyEqual(), alloc) 
 	{
 		
 	}
@@ -393,10 +379,10 @@ public:
 	/**
 	 * @brief Construct an empty AnySet instance.  Sets max_load_factor() to 1.0.
 	 * @param bucket_count - Minimum number of buckets to initialize the set with.
-	 * @param hash         - Hash function to initialize the set with.
+	 * @param hash         - %Hash function to initialize the set with.
 	 * @param alloc        - Allocator to initialize the set with.
 	 */
-	AnySet(size_type bucket_count, const Hash& hash, const Allocator& alloc):
+	AnySet(size_type bucket_count, const HashFn& hash, const Allocator& alloc):
 		AnySet(bucket_count, hash, KeyEqual(), alloc)
 	{
 		
@@ -406,10 +392,13 @@ public:
 	 * @brief Construct an AnySet instance from the range [first, last). 
 	 *        Sets max_load_factor() to 1.0.  If multiple elements in the
 	 *        range compare equivalent, only the first encountered is inserted.
+	 * 
+	 * @tparam InputIt - Input iterator type.
+	 * 
 	 * @param first        - Iterator to the first element in the range.
 	 * @param last         - Iterator one position past the last element in the range.
 	 * @param bucket_count - Minimum number of buckets to initialize the set with.
-	 * @param hash         - Hash function to initialize the set with.
+	 * @param hash         - %Hash function to initialize the set with.
 	 * @param equal        - Equality comparison function to initialize the set with
 	 * @param alloc        - Allocator to initialize the set with.
 	 */
@@ -418,7 +407,7 @@ public:
 		InputIt first, 
 		InputIt last,
 		size_type bucket_count = 0,
-		const Hash& hash = Hash(),
+		const HashFn& hash = HashFn(),
 		const KeyEqual& equal = KeyEqual(),
 		const Allocator& alloc = Allocator()
 	):
@@ -431,6 +420,9 @@ public:
 	 * @brief Construct an AnySet instance from the range [first, last). 
 	 *        Sets max_load_factor() to 1.0.  If multiple elements in the
 	 *        range compare equivalent, only the first encountered is inserted.
+	 * 
+	 * @tparam InputIt - Input iterator type.
+	 * 
 	 * @param first        - Iterator to the first element in the range.
 	 * @param last         - Iterator one position past the last element in the range.
 	 * @param bucket_count - Minimum number of buckets to initialize the set with.
@@ -443,7 +435,7 @@ public:
 		size_type bucket_count,
 		const Allocator& alloc
 	):
-		AnySet(first, last, bucket_count, Hash(), KeyEqual(), alloc)
+		AnySet(first, last, bucket_count, HashFn(), KeyEqual(), alloc)
 	{
 		
 	}
@@ -452,10 +444,13 @@ public:
 	 * @brief Construct an AnySet instance from the range [first, last). 
 	 *        Sets max_load_factor() to 1.0.  If multiple elements in the
 	 *        range compare equivalent, only the first encountered is inserted.
+	 * 
+	 * @tparam InputIt - Input iterator type.
+	 * 
 	 * @param first        - Iterator to the first element in the range.
 	 * @param last         - Iterator one position past the last element in the range.
 	 * @param bucket_count - Minimum number of buckets to initialize the set with.
-	 * @param hash         - Hash function to initialize the set with.
+	 * @param hash         - %Hash function to initialize the set with.
 	 * @param alloc        - Allocator to initialize the set with.
 	 */
 	template <class InputIt>
@@ -463,7 +458,7 @@ public:
 		InputIt first, 
 		InputIt last,
 		size_type bucket_count,
-		const Hash& hash,
+		const HashFn& hash,
 		const Allocator& alloc
 	):
 		AnySet(first, last, bucket_count, hash, KeyEqual(), alloc)
@@ -560,9 +555,12 @@ public:
 	 *        Same as AnySet(init.begin(), init.end()).  Sets max_load_factor() to 1.0.
 	 *        If multiple elements in the list compare equivalent, only the first 
 	 *        encountered is inserted.
+	 * 
+	 * @tparam T - Type of the elements in the initializer list which will be added to the set.
+	 * 
 	 * @param ilist        - Initializer list to initialize the elements of the set with.
 	 * @param bucket_count - Minimum number of buckets to initialize the set with.
-	 * @param hash         - Hash function to initialize the set with.
+	 * @param hash         - %Hash function to initialize the set with.
 	 * @param equal        - Equality comparison function to initialize the set with
 	 * @param alloc        - Allocator to initialize the set with.
 	 */
@@ -570,7 +568,7 @@ public:
 	AnySet(
 		std::initializer_list<T> ilist,
 		size_type bucket_count = 0,
-		const Hash& hash = Hash(),
+		const HashFn& hash = HashFn(),
 		const KeyEqual& equal = KeyEqual(),
 		const Allocator& alloc = Allocator()
 	):
@@ -584,6 +582,9 @@ public:
 	 *        Same as AnySet(init.begin(), init.end()).  Sets max_load_factor() to 1.0.
 	 *        If multiple elements in the list compare equivalent, only the first 
 	 *        encountered is inserted.
+	 * 
+	 * @tparam T - Type of the elements in the initializer list which will be added to the set.
+	 * 
 	 * @param ilist        - Initializer list to initialize the elements of the set with.
 	 * @param bucket_count - Minimum number of buckets to initialize the set with.
 	 * @param alloc        - Allocator to initialize the set with.
@@ -594,7 +595,7 @@ public:
 		size_type bucket_count,
 		const Allocator& alloc
 	):
-		AnySet(ilist, bucket_count, Hash(), KeyEqual(), alloc)
+		AnySet(ilist, bucket_count, HashFn(), KeyEqual(), alloc)
 	{
 		
 	}
@@ -604,16 +605,19 @@ public:
 	 *        Same as AnySet(init.begin(), init.end()).  Sets max_load_factor() to 1.0.
 	 *        If multiple elements in the list compare equivalent, only the first 
 	 *        encountered is inserted.
+	 * 
+	 * @tparam T - Type of the elements in the initializer list which will be added to the set.
+	 * 
 	 * @param ilist        - Initializer list to initialize the elements of the set with.
 	 * @param bucket_count - Minimum number of buckets to initialize the set with.
-	 * @param hash         - Hash function to initialize the set with.
+	 * @param hash         - %Hash function to initialize the set with.
 	 * @param alloc        - Allocator to initialize the set with.
 	 */
 	template <class T>
 	AnySet(
 		std::initializer_list<T> ilist,
 		size_type bucket_count,
-		const Hash& hash,
+		const HashFn& hash,
 		const Allocator& alloc
 	):
 		AnySet(ilist, bucket_count, hash, KeyEqual(), alloc)
@@ -625,9 +629,12 @@ public:
 	 * @brief Construct an AnySet with the contents of the tuple tup. Sets max_load_factor()
 	 *        to 1.0.  If multiple elements in the tuple have the same type and compare 
 	 *        equivalent,only the first encountered is inserted.
+	 * 
+	 * @tparam T - Parameter pack types of the tuple elements that will be used to initialize the set.
+	 * 
 	 * @param ilist        - Initializer list to initialize the elements of the set with.
 	 * @param bucket_count - Minimum number of buckets to initialize the set with.
-	 * @param hash         - Hash function to initialize the set with.
+	 * @param hash         - %Hash function to initialize the set with.
 	 * @param equal        - Equality comparison function to initialize the set with
 	 * @param alloc        - Allocator to initialize the set with.
 	 */
@@ -635,7 +642,7 @@ public:
 	AnySet(
 		std::tuple<T ...>&& tup,
 		size_type bucket_count = 2 * (sizeof...(T)),
-		const Hash& hash = Hash(),
+		const HashFn& hash = HashFn(),
 		const KeyEqual& equal = KeyEqual(),
 		const Allocator& alloc = Allocator()
 	):
@@ -654,6 +661,9 @@ public:
 	 * @brief Construct an AnySet with the contents of the tuple tup. Sets max_load_factor()
 	 *        to 1.0.  If multiple elements in the tuple have the same type and compare 
 	 *        equivalent,only the first encountered is inserted.
+	 * 
+	 * @tparam T - Parameter pack types of the tuple elements that will be used to initialize the set.
+	 * 
 	 * @param ilist        - Initializer list to initialize the elements of the set with.
 	 * @param bucket_count - Minimum number of buckets to initialize the set with.
 	 * @param alloc        - Allocator to initialize the set with.
@@ -664,7 +674,7 @@ public:
 		size_type bucket_count,
 		const Allocator& alloc
 	):
-		AnySet(std::move(tup), bucket_count, Hash(), KeyEqual(), alloc)
+		AnySet(std::move(tup), bucket_count, HashFn(), KeyEqual(), alloc)
 	{
 		
 	}
@@ -673,16 +683,19 @@ public:
 	 * @brief Construct an AnySet with the contents of the tuple tup. Sets max_load_factor()
 	 *        to 1.0.  If multiple elements in the tuple have the same type and compare 
 	 *        equivalent,only the first encountered is inserted.
+	 * 
+	 * @tparam T - Parameter pack types of the tuple elements that will be used to initialize the set.
+	 * 
 	 * @param ilist        - Initializer list to initialize the elements of the set with.
 	 * @param bucket_count - Minimum number of buckets to initialize the set with.
-	 * @param hash         - Hash function to initialize the set with.
+	 * @param hash         - %Hash function to initialize the set with.
 	 * @param alloc        - Allocator to initialize the set with.
 	 */
 	template <class ... T>
 	AnySet(
 		std::tuple<T ...>&& tup,
 		size_type bucket_count,
-		const Hash& hash,
+		const HashFn& hash,
 		const Allocator& alloc
 	):
 		AnySet(std::move(tup), bucket_count, hash, KeyEqual(), alloc)
@@ -690,12 +703,20 @@ public:
 		
 	}
 
+	/// @} Constructors
+
+	/// @name Assignment
+	/// @{
+
 	/**
 	 * @brief Copy assigns the contents of this AnySet instance from the contents of other.
 	 *        Copies the load factor, the predicate, the hash function, and allocator as well.
 	 *        
 	 * @param other - The set whose contents will be copied.
 	 *
+	 * @throws te::CopyConstructionError if @p other contains an element of non-copy-constructible
+	 *         type.
+	 * 
 	 * @return *this;
 	 */
 	AnySet& operator=(const AnySet& other)
@@ -730,8 +751,11 @@ public:
 	AnySet& operator=(std::initializer_list<T> ilist)
 	{ return *this = self_type(ilist); }
 
+	/// @} Assignment
+
 	/// @name Iterators
 	/// @{
+
 	/**
 	 * @brief Get a const_iterator to the first element in the set.
 	 *        
@@ -832,7 +856,9 @@ public:
 	 *        if there is no element with the same type and value in the container.
 	 * 
 	 * @param args - Arguments to forward to the constructor of the element.
-	 *
+	 * 
+	 * @tparam T - Type of the element to emplace.  Must be a constructible non-reference type.
+	 * 
 	 * @return Returns a pair consisting of an iterator to the inserted element, or the 
 	 *         already-existing element if no insertion happened, and a bool denoting whether 
 	 *         the insertion took place. true for insertion, false for no insertion.
@@ -855,7 +881,7 @@ public:
 			std::is_same_v<T, std::decay_t<T>>,
 			"Cannot emplace references, arrays, or functions into an AnySet."
 		);
-		auto node(make_any_value<T, Hash, KeyEqual>(get_hasher(), std::forward<Args>(args)...));
+		auto node(make_any_value<T, HashFn, KeyEqual>(get_hasher(), std::forward<Args>(args)...));
 		auto hash_v = node->hash;
 		KeyInfo<T> ki{unsafe_cast<const T&>(*node), hash_v, bucket_index(hash_v)};
 		return insert_impl<true>(ki.value, ki, std::move(node));
@@ -865,6 +891,8 @@ public:
 	 * @brief Inserts a new element into the container constructed in-place with the given args 
 	 *        if there is no element with the same type and value in the container, using an iterator 
 	 *        hint as a suggestion for where the new element should be placed.
+	 * 
+	 * @tparam T - Type of the element to emplace.  Must be a constructible non-reference type.
 	 * 
 	 * @param args - Arguments to forward to the constructor of the element.
 	 * @param hint - Iterator, used as a suggestion as to where to insert the new element.
@@ -915,7 +943,7 @@ public:
 	 *        with an equivalent value and type.
 	 * 
 	 * @param value - element value to insert.
-	 *
+	 * 
 	 * @return Returns a pair consisting of an iterator to the inserted element, or the 
 	 *         already-existing element if no insertion happened, and a bool denoting whether 
 	 *         the insertion took place. true for insertion, false for no insertion.
@@ -952,10 +980,10 @@ public:
 			or std::is_rvalue_reference_v<decltype(*std::declval<It>())>
 		>
 	>
-	void insert(It first, It last)
+	size_type insert(It first, It last)
 	{
 		using iter_cat = typename std::iterator_traits<It>::iterator_category;
-		range_insert(first, last, iter_cat{});
+		return range_insert(first, last, iter_cat{});
 	}
 
 	/**
@@ -963,11 +991,15 @@ public:
 	 *        have the same type and have values that compare equivalent, and there is no such element 
 	 *        already in the set, only the first encountered is inserted.
 	 * 
-	 * @param args - values to insert into the set.
+	 * @param first  - first value to insert into the set.
+	 * @param second - second value to insert into the set.
+	 * @param args   - subsequent values to insert into the set.
 	 * 
 	 * @remark Variadic argument insertion assumes that all of the arguments do not already exist in the set 
 	 *         and will preemptively reallocate the internal bucket array accordingly to satisfy the current
 	 *         max_load_factor().
+	 * 
+	 * @return A bitset where the ith bit is set to `true` iff the ith argument was successfully inserted.
 	 * 
 	 * @note References, pointers, and iterators remain valid after insertion, however the values 
 	 *       pointed to by iterators may change.
@@ -982,9 +1014,9 @@ public:
 			and (not std::is_same_v<std::decay_t<T>, iterator>)
 		>
 	>
-	void insert(T&& first, U&& second, V&& ... args)
+	std::bitset<2ull + sizeof...(V)> insert(T&& first, U&& second, V&& ... args)
 	{
-		arg_insert(
+		return arg_insert(
 			std::forward<T>(first),
 			std::forward<U>(second),
 			std::forward<V>(args) ...
@@ -1002,13 +1034,15 @@ public:
 	 *         exist in the set and will preemptively reallocate the internal bucket array
 	 *         accordingly to satisfy the current max_load_factor().
 	 * 
+	 * @return The number of values successfully inserted.
+	 * 
 	 * @note References, pointers, and iterators remain valid after insertion, however the values 
 	 *       pointed to by iterators may change.
 	 */
 	template <class T, class = std::enable_if_t<std::is_copy_constructible_v<T>>>
-	void insert(std::initializer_list<T> ilist)
+	size_type insert(std::initializer_list<T> ilist)
 	{
-		insert(ilist.begin(), ilist.end());
+		return insert(ilist.begin(), ilist.end());
 	}
 
 	/**
@@ -1264,7 +1298,7 @@ public:
 	/**
 	 * @brief Check if @p this contains the same value as another set.
 	 * 
-	 * @param any_v - AnyValue<Hash, KeyEqual> instance to search for.
+	 * @param any_v - AnyValue<%Hash, KeyEqual> instance to search for.
 	 * 
 	 * @return true if this set contains an element whose type as is the same as 
 	 *         @p any_v's value's type and whose value compares equal to the value 
@@ -1278,7 +1312,7 @@ public:
 	/**
 	 * @brief Check if @p this contains the same value as another set.
 	 * 
-	 * @param any_v - AnyValue<Hash, KeyEqual> instance to search for.
+	 * @param any_v - AnyValue<%Hash, KeyEqual> instance to search for.
 	 * 
 	 * @return true if this set contains an element whose type as is the same as 
 	 *         @p any_v's value's type and whose value compares equal to the value 
@@ -1801,6 +1835,9 @@ public:
 	/**
 	 * @brief Copies or moves the elements in the range [first, last) from @p other into @p this.
 	 * 
+	 * Elements are only moved from @p other if @p other is an rvalue reference to non-const.  
+	 * If @p other is a reference to const AnySet, then elements are copied.
+	 * 
 	 * @param other - The set to move the element from.
 	 * @param first - Iterator to the first element to move.
 	 * @param last  - Iterator to the element after the last element to move.
@@ -1836,6 +1873,9 @@ public:
 	/**
 	 * @brief Copies or moves the element at position @p pos from @p other into @p this.
 	 * 
+	 * Elements are only moved from @p other if @p other is an rvalue reference to non-const.
+	 * If @p other is a reference to const AnySet, then elements are copied.
+	 *
 	 * @param other - The set to copy or move the element from.
 	 * @param pos - Iterator to the element to move.
 	 *
@@ -1862,22 +1902,21 @@ public:
 	auto splice_or_copy(T&& other, const_iterator pos)
 		-> std::tuple<iterator, decltype(other.begin()), bool>
 	{
-		assert(not other.iter_is_end(pos));
-		auto hash_v = pos->hash;
+		using tuple_t = std::tuple<iterator, decltype(other.begin()), bool>;
+		assert(not pos.is_end());
 		auto ki = make_key_info(*pos);
-		auto [ins_pos_, success] = find_position(*pos, ki);
+		auto [ins_pos_, found] = find_position(ki);
 		auto ins_pos = ins_pos_.to_non_const();
+		if(found)
+			return tuple_t(ins_pos, std::next(pos).to_non_const(), false);
 		if constexpr(std::is_rvalue_reference_v<decltype(other)>)
 		{
-			if(not success)
-				return std::make_tuple(
-					ins_pos, std::next(pos).to_non_const(), false
-				);
 			auto [node, next] = other.pop(pos);
 			try
 			{
+				assert(load_factor_satisfied());
 				return std::make_tuple(
-					safely_splice_at(ins_pos, make_key_info(*node, hash_v), std::move(node)), next, true
+					safely_splice_at(ins_pos, ki, std::move(node)), next, true
 				);
 			}
 			catch(const std::bad_alloc& e)
@@ -1890,10 +1929,9 @@ public:
 		}
 		else
 		{
-			if(not success)
-				return std::make_tuple(ins_pos, std::next(pos), false);
+			assert(load_factor_satisfied());
 			return std::make_tuple(
-				safely_splice_at(ins_pos, other.dup(pos), hash_v), std::next(pos), true
+				safely_splice_at(ins_pos, ki, other.dup(pos)), std::next(pos), true
 			);
 		}
 	}
@@ -2064,27 +2102,37 @@ private:
 	}
 
 	template <class ... T>
-	void arg_insert(T&& ... args)
+	std::bitset<sizeof...(T)> arg_insert(T&& ... args)
 	{
+		std::bitset<sizeof...(T)> bs;
+		std::size_t pos = 0;
 		preemptive_reserve(sizeof...(args));
-		(..., insert_impl<false>(std::forward<T>(args)));
+
+		// set the ith bit if the ith arg was inserted
+		(bs.set(pos++, insert_impl<false>(std::forward<T>(args)).second) , ...);
+
 		assert(load_factor() <= max_load_factor());
+		return bs;
 	}
 
 	template <class It>
-	void range_insert(It first, It last, std::input_iterator_tag)
+	size_type range_insert(It first, It last, std::input_iterator_tag)
 	{
+		size_type count = 0;
 		while(first != last)
-			insert_impl<true>(*first++);
+			count += static_cast<size_type>(insert_impl<true>(*first++).second);
+		return count;
 	}
 
 	template <class It, class = std::enable_if_t<std::is_copy_constructible_v<typename std::iterator_traits<It>::value_type>>>
-	void range_insert(It first, It last, std::forward_iterator_tag)
+	size_type range_insert(It first, It last, std::forward_iterator_tag)
 	{
+		size_type count = 0;
 		preemptive_reserve(std::distance(first, last));
 		while(first != last)
-			insert_impl<false>(*first++);
+			count += static_cast<size_type>(insert_impl<false>(*first++).second);
 		assert(load_factor() <= max_load_factor());
+		return count;
 	}
 
 	void preemptive_reserve(std::size_t ins_count)
@@ -2126,7 +2174,7 @@ private:
 			{
 				if(not existing)
 				{
-					existing = make_any_value<std::decay_t<T>, Hash, KeyEqual>(
+					existing = make_any_value<std::decay_t<T>, HashFn, KeyEqual>(
 						ki.hash, std::forward<T>(value)
 					);
 				}
@@ -2299,16 +2347,16 @@ private:
 	const pair_type&& as_pair() const &&
 	{ return static_cast<const pair_type&&>(*this); }
 
-	Hash& get_hasher() &
+	HashFn& get_hasher() &
 	{ return as_pair().first(); }
 
-	Hash&& get_hasher() &&
+	HashFn&& get_hasher() &&
 	{ return std::move(std::move(as_pair()).first()); }
 
-	const Hash& get_hasher() const &
+	const HashFn& get_hasher() const &
 	{ return as_pair().first(); }
 
-	const Hash&& get_hasher() const &&
+	const HashFn&& get_hasher() const &&
 	{ return std::move(std::move(as_pair()).first()); }
 
 	KeyEqual& get_key_equal() &

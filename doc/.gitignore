@@ -1,0 +1,8 @@
+CMakeDoxyfile.in
+CMakeFiles
+Makefile
+CMakeCache.txt
+CMakeDoxygenDefaults.cmake
+cmake_install.cmake
+Doxyfile.docs
+html
