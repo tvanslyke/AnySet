@@ -1,7 +1,0 @@
-<map id="Graphical Class Hierarchy" name="Graphical Class Hierarchy">
-<area shape="rect" id="node1" href="$structte_1_1CompressedPair.html" title="te::CompressedPair\l\&lt; HashFn, KeyEqual \&gt;" alt="" coords="5,71,161,112"/>
-<area shape="rect" id="node2" href="$structte_1_1AnySet.html" title="AnySet is an associative container that contains a set of unique objects of any constructible type..." alt="" coords="221,5,375,47"/>
-<area shape="rect" id="node3" href="$structte_1_1detail_1_1CompressedPairBase.html" title="te::detail::CompressedPair\lBase\&lt; HashFn \&gt;" alt="" coords="209,71,387,112"/>
-<area shape="rect" id="node4" href="$structte_1_1CompressedPair.html" title="te::CompressedPair\l\&lt; T, U \&gt;" alt="" coords="435,159,573,200"/>
-<area shape="rect" id="node5" href="$structte_1_1detail_1_1CompressedPairBase.html" title="te::detail::CompressedPair\lBase\&lt; T \&gt;" alt="" coords="209,188,387,229"/>
-</map>

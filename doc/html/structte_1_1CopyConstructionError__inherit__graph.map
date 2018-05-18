@@ -1,3 +1,0 @@
-<map id="te::CopyConstructionError" name="te::CopyConstructionError">
-<area shape="rect" id="node3" href="$structte_1_1NoCopyConstructorError.html" title="Exception thrown when attempting to make copies of an AnyValue instance that contains an instance of ..." alt="" coords="5,155,223,181"/>
-</map>
