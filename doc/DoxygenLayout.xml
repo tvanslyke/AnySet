@@ -115,13 +115,13 @@
     <sourcelink visible="yes"/>
     <memberdecl>
       <classes visible="yes" title=""/>
-      <namespaces visible="yes" title=""/>
-      <constantgroups visible="yes" title=""/>
-      <defines title=""/>
       <typedefs title=""/>
       <enums title=""/>
       <functions title=""/>
       <variables title=""/>
+      <namespaces visible="yes" title=""/>
+      <constantgroups visible="yes" title=""/>
+      <defines title=""/>
       <membergroups visible="yes"/>
     </memberdecl>
     <memberdef>

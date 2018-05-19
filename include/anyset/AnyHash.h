@@ -16,8 +16,6 @@ namespace te {
  * This class is used by te::AnyHash if it has a specialization for the 
  * necessary type.  Users can specialize this template and provide an operator() 
  * for their own types, to be used by te::AnyHash.
- *
- * @ingroup AnySet-Module
  */
 template <class T = void>
 struct Hash: std::hash<T>
@@ -48,8 +46,6 @@ inline constexpr const bool has_hash_specialization_v = has_hash_specialization<
 /**
  * @brief
  * Function object that implements a hash function for instances of type T.
- *
- * @ingroup AnySet-Module
  */
 template <>
 struct Hash<void>
@@ -103,8 +99,6 @@ std::size_t hash_value(const T& value)
  *
  * @see Hash         - A template class whose specializations determine the behavior of AnyHash.
  * @see hash_value() - Provides and ADL-based approach to customizing the behavior of AnyHash.
- *
- * @ingroup AnySet-Module
  */
 struct AnyHash {
 

@@ -25,12 +25,12 @@ struct MyStringError:
 	}
 };
 
-// overloads so ADL can find compute_hash() in AnyHash::operator()
-std::size_t compute_hash(const MyString& s)
-{ return te::compute_hash(std::string_view(s)); }
+// overloads so ADL can find hash_value() in AnyHash::operator()
+std::size_t hash_value(const MyString& s)
+{ return te::hash_value(std::string_view(s)); }
 
-std::size_t compute_hash(const MyStringError& s)
-{ return te::compute_hash(std::string_view(s)); }
+std::size_t hash_value(const MyStringError& s)
+{ return te::hash_value(std::string_view(s)); }
 
 } /* namespace silly */
 

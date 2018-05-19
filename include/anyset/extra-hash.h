@@ -11,8 +11,13 @@
 #include "AnyHash.h"
 #include "AnySet.h"
 
+/// @file extra-hash.h - Utilities for building hash functions, intended to be compatible with boost::container_hash.
+///                      Also includes specializations of te::Hash for standard types like std::pair and std::tuple.
+
 namespace te {
 
+/// @name Extra Hash Utilities
+/// @{
 
 /**
  * @brief Combine two hash values using a formula that is compatible with 
@@ -75,7 +80,10 @@ struct ArgHash {
 };
 } /* namespace detail */
 
+/// @} Extra Hash Utilities
 
+/// @name Specializations for te::Hash
+/// @{
 
 /// Specialize te::Hash for std::tuple.
 template <class ... T>
@@ -108,6 +116,8 @@ struct Hash<std::array<T, N>>
 	std::size_t operator()(const std::array<T, N>& a) const
 	{ return std::apply(detail::ArgHash{}, a); }
 };
+
+/// @} Specializations for te::Hash
 
 } /* namespace te */
 

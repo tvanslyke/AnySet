@@ -16,6 +16,8 @@
 /**
  * @mainpage AnySet Docs
  * 
+ * ## [Main Project Page](https://github.com/tvanslyke/AnySet)
+ *
  * te::AnySet is a [std::unordered_set](http://en.cppreference.com/w/cpp/container/unordered_set)-like 
  * container that can hold instances of any constructible type.  te::AnySet uses type erasure to store 
  * values of arbitrary types uniformly.
@@ -23,24 +25,24 @@
  * te::AnySet intentionally mimics the interface of [std::unordered_set](http://en.cppreference.com/w/cpp/container/unordered_set),
  * providing member functions with the same name and semantics of many of the member functions of
  * [std::unordered_set](http://en.cppreference.com/w/cpp/container/unordered_set).  The primary difference
- * is that te::AnySet stores its contained objects inside of a wrapper class te::AnyValue.  
+ * is that te::AnySet stores its contained objects inside of a wrapper class te::AnyValue.
  *
- * te::AnyValue is not *not* a proxy class; te::AnySet stores actual instances of te::AnyValue which in
- * turn store their respective type-erased values in-place.  This side-steps issues that arise from trying to use
- * proxy references like the infamous [std::vector<bool>::reference](http://en.cppreference.com/w/cpp/container/vector_bool/reference).
- * 
- * 
+ * ## Quick Reference
+ * * te::AnySet - A type-erased hash set.
+ *     * SetOperations.h - Free functions and operator overloads for common set operations on te::AnySet instances.
+ * * te::AnyValue - Type of elements stored in AnySet instances.
+ * * te::AnyHash - Generic hash function object.
+ *     * te::Hash - Customization point for te::AnyHash.
+ *     * hash_value() - Customization point for te::AnyHash (compatible with boost::container_hash).
+ *     * extra-hash.h - Utilities for building hash functions, intended to be compatible with boost::container_hash.
+ *                      Also includes specializations of te::Hash for standard types like std::pair and std::tuple.
  *
- * # Quick Reference
- * ## Classes
- * * te::AnySet
- * * te::AnyValue
- * * te::AnyHash
- * * te::Hash
+ * Example Usage:
+ * @include anyset.example.cpp
+ * 
  */
 
 
-/// @defgroup AnySet-Module
 /// @brief Primary classes and utility functions for AnySet.
 
 namespace te {
@@ -96,8 +98,6 @@ inline constexpr const bool is_iterator_v = is_iterator<T>::value;
  * @see AnyValue - User-visible @p value_type for AnySet instances.
  * @see AnyHash  - The default value of HashFn.  It is intended to be sufficiently extensible such that users 
  *                 should not need to roll their own HashFn types.
- *
- * @ingroup AnySet-Module
  */
 template <
 	class HashFn = AnyHash,

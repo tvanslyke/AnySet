@@ -243,8 +243,6 @@ std::unique_ptr<AnyValue<H, C>> make_any_value(H hasher, Args&& ... args);
  *
  * @see AnySet
  * @see AnyHash
- *
- * @ingroup AnySet-Module
  */
 template <class HashFn, class Compare>
 struct AnyValue
