@@ -74,7 +74,7 @@ bool operator==(const LockGuard& l, const LockGuard& r)
 
 // needs to be hashable
 std::size_t hash_value(const LockGuard& lg)
-{ return hash_value(&lg); }
+{ return te::hash_value(&lg); }
 
 } /* namespace custom */
 
