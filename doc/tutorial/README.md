@@ -72,13 +72,15 @@ struct LockGuard: public std::lock_guard<std::mutex> {
 bool operator==(const LockGuard& l, const LockGuard& r)
 { return &l == &r; }
 
+// needs to be hashable
+std::size_t hash_value(const LockGuard& lg)
+{
+	using te::hash_value;
+	return hash_value(&lg);
+}
+
 } /* namespace custom */
 
-template <>
-struct te::Hash<custom::LockGuard> {
-        std::size_t operator()(const custom::LockGuard& guard) const
-        { return te::hash_value(std::addressof(guard)); }
-};
 static std::mutex some_mutex;
  ...
 te::AnySet<> set;
