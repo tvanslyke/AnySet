@@ -186,11 +186,16 @@ std::unique_ptr<TypedValue<T, H, C>> make_typed_value(H hash_fn, Args&& ... args
  * @param hash_value - The resultant hash code obtained from hashing the to-be-constructed 
  *                     @p T instance.
  * @param args       - arguments to forward to @p T's constructor.
+ * 
  * @note @p hash_value is a "trust me" argument.  Only call this overload if you are
  *       absolutely sure of what the hash code of the constructed object will be.
  *       Use of this overload is appropriate, for example, when move-constructing a 
  *       long std::string whose hash has already been computed.
- *       
+ *
+ * @remark Throws any exceptions thrown by `T`'s constructor, by calling `hasher` with the 
+ *         constructed value of `T`, or by std::make_unique();
+ *
+ * @relates AnyValue.
  */
 template <class T, class H, class C, class ... Args>
 std::unique_ptr<AnyValue<H, C>> make_any_value(std::size_t hash_value, Args&& ... args);
@@ -206,6 +211,9 @@ std::unique_ptr<AnyValue<H, C>> make_any_value(std::size_t hash_value, Args&& ..
  * @param hasher - The instance of @p H to use to compute the hash of contained @p T
  *                 object after it is constructed in the AnyValue.
  * @param args   - Arguments to forward to @p T's constructor.
+ *
+ * @remark Throws any exceptions thrown by `T`'s constructor, by calling `hasher` with the 
+ *         constructed value of `T`, or by std::make_unique();
  *
  * @relates AnyValue.
  */
@@ -307,9 +315,10 @@ struct AnyValue
 	 * @brief Query whether the contained objects in @p left and @p right are of
 	 *        different types, or whether the contained same-type objects compare 
 	 *        not-equal using operator!=.
-	 * 	@note If either of the contained objects are of non-inequality-comparable 
-	 * 	      types, this function returns @p true.  This is the case even if the 
-	 * 	      contained objects are of the same, empty type.
+	 *
+	 * @note If either of the contained objects are of non-inequality-comparable 
+	 *       types, this function returns @p true.  This is the case even if the 
+	 *       contained objects are of the same, empty type.
 	 *
 	 * @return true if the contained types are not identical, if the contained 
 	 *         types are not inequality-comparable, or if the contained same-type
@@ -901,21 +910,166 @@ const T& as(const AnyValue<H, C>& self)
 	throw std::bad_cast();
 }
 
-/// @} Casts and Accessors
-
-
 template <class T, class H, class C>
 bool is(const AnyValue<H, C>& any_v)
 { return any_v.typeinfo() == typeid(T); }
 
-/** 
- * @brief Overloads compute_hash() for AnyValue. 
+
+namespace detail {
+
+template <class T, class H, class C, class Visitor>
+bool visit_impl(Visitor&& visitor, const AnyValue<H, C>& any_v, std::ptrdiff_t& count)
+{
+	if(const T* p = exact_cast<const T*>(&any_v); static_cast<bool>(p))
+	{
+		std::invoke(std::forward<Visitor&&>(visitor), *p);
+		return true;
+	}
+	else
+	{
+		++count;
+		return false;
+	}
+}
+
+} /* namespace detail */
+
+/**
+ * @brief Access the contained type through a visitor function object in the style of std::visit.
  * 
+ * @tparam T ...  - The types to attempt to access @p any_v's contained object through.
+ * 
+ * @param visitor - A callable object that can accept a parameter of any of @p T.
+ * @param any_v   - The AnyValue instance whose contained object is to be accessed by @p visitor.
+ *
  * @relates AnyValue
  */
-template <class H, class C>
-std::size_t compute_hash(const AnyValue<H, C>& any_v)
-{ return any_v.hash; }
+template <class ... T, class Visitor, class H, class C>
+std::pair<std::decay_t<Visitor>, std::ptrdiff_t> visit(Visitor&& visitor, const AnyValue<H, C>& any_v)
+{
+	std::ptrdiff_t count = 0;
+	if(not (... or detail::visit_impl<T>(std::forward<Visitor>(visitor), any_v, count)))
+		count = -1;
+	return std::pair<std::decay_t<Visitor>, std::ptrdiff_t>(
+		std::forward<Visitor>(visitor), count
+	);
+}
+
+/**
+ * Equivalent to as().
+ *
+ * @see as()
+ * @see get_default_ref()
+ * @see get_default_val()
+ *
+ * @relates AnyValue
+ */
+template <class T, class H, class C>
+const T& get(const AnyValue<H, C>& any_v)
+{
+	return as<T>(any_v);
+}
+
+/**
+ * @brief Get the contained value in `any_v` through a reference to const `T`.
+ *
+ * If the value contained in `any_v` is of type `T`, as determined by calling try_as()
+ * (`try_as<T>(any_v)`), returns the contained value by 'reference to const `T`, 
+ * otherwise the provided "default" reference `default_ref` is returned.
+ *
+ * @note If `default_ref` is not an lvalue reference to `T`, the call fails to compile
+ *       (via static_assert).  This is to prevent silently returning a dangling reference 
+ *       to `T`.  See [this talk](https://youtu.be/3MB2iiCkGxg?t=762) for further details
+ *       and justification.
+ *
+ * @tparam T - The type to access, absent of reference (&) or const/volatile qualifiers.
+ *
+ * @param any_v       - The AnyValue instance whose contained object is being accessed.
+ * @param default_ref - An lvalue reference to an object of type `T` which will be returned
+ *                      if `any_v` does not contain an object of type `T`.
+ * 
+ * @return A const reference to the object of type `T` contained in `any_v`, or `default_ref`
+ *         if `any_v` does not contain an object of type `T`.
+ *
+ * @see get()
+ * @see get_default_val()
+ *
+ * @relates AnyValue
+ */
+template <class T, class H, class C, class DefaultRef>
+const std::decay_t<T>& get_default_ref(const AnyValue<H, C>& any_v, DefaultRef&& default_ref)
+{
+	static_assert(
+		std::is_same_v<T, std::decay_t<T>>, 
+		"T should be a naked type (no cv qualifiers, or refereces) in get_default_ref<T>()"
+	);
+
+	static_assert(
+		std::is_same_v<std::decay_t<T>, std::decay_t<DefaultRef>>, 
+		"The second argument (the 'default') in get_default_ref<T>() must have the same type as T."
+	);
+
+	static_assert(
+		not std::is_rvalue_reference_v<decltype(default_ref)>,
+		"get_default_ref() cannot be called with an rvalue (would return a dangling reference)."
+	);
+	
+	if(const std::decay_t<T>* p = try_as<T>(any_v); static_cast<bool>(p))
+		return *p;
+	else
+		return std::forward<DefaultRef>(default_ref);
+}
+
+/**
+ * @brief Get a copy of the contained value in `any_v` of type `T`.
+ *
+ * If the value contained in `any_v` is of type `T`, as determined by calling try_as()
+ * (`try_as<T>(any_v)`), returns a copy of the contained value, otherwise an object of 
+ * type `T` is constructed from the provided "default" value, `default_val`, and returned.
+ *
+ * @note Unlike get_default_ref(), the given "default" value, `default_val`, may be a rvalue
+ *       or an instance of a type other than `T`, so long as an object of type `T` can be
+ *       constructed from the provided value.
+ *
+ * @tparam T - The type to access, absent of reference (&) or const/volatile qualifiers.
+ *
+ * @param any_v       - The AnyValue instance whose contained object is being accessed.
+ * @param default_ref - The default value to constuct an instance of `T` from in the case
+ *                      that `any_v` does not contain an object of type `T`.
+ * 
+ * @return If `any_v` contains an object of type `T`, returns a copy of the constained object,
+ *         otherwise, returns an instance of type `T` constructed from `default_val`.
+ *
+ * @see get()
+ * @see get_default_ref()
+ *
+ * @relates AnyValue
+ */
+template <class T, class H, class C, class DefaultVal>
+std::decay_t<T> get_default_val(const AnyValue<H, C>& any_v, DefaultVal&& default_val)
+{
+	static_assert(
+		std::is_same_v<T, std::decay_t<T>>, 
+		"T should be a naked type (no cv qualifiers, or refereces) in get_default_val<T>()"
+	);
+
+	static_assert(
+		std::is_constructible_v<std::decay_t<T>, DefaultVal>,
+		"Cannot construct return value of get_default_val() with given argument for the default value (the second arguments)."
+	);
+
+	static_assert(
+		std::is_constructible_v<std::decay_t<T>, const std::decay_t<T>>,
+		"Cannot construct return value of get_default_val() with the value contained in AnyValue (const reference)."
+	);
+
+	if(const T* p = try_as<T>(any_v); static_cast<bool>(p))
+		return *p;
+	else
+		return T(std::forward<DefaultVal>(default_val));
+}
+
+/// @} Casts and Accessors
 
 } /* namespace te */	
 

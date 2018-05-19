@@ -186,6 +186,15 @@ TEST_CASE("IntersectionOf", "[intersection-of]") {
 		a.insert("asdf"s, 1, 2, 100.0);
 		REQUIRE(intersection_of(a, b).empty());
 	}
+	
+	SECTION("intersection_of() only throws CopyConstructionErrors when copying types without a copy constructor") {
+		any_set_t a(std::make_tuple(UniqueInt::make(1), 2, 3, 4));
+		any_set_t b(std::make_tuple(UniqueInt::make(1)));
+		REQUIRE_THROWS_AS(intersection_of(a, b), const te::NoCopyConstructorError<UniqueInt>&);
+		REQUIRE_THROWS_AS(intersection_of(a, b), const te::CopyConstructionError&);
+		REQUIRE_NOTHROW(intersection_of(std::move(a), std::move(b)));
+	}
+
 }
 
 

@@ -12,7 +12,7 @@ struct SizeHash
 {
 	template <class T>
 	std::size_t operator()(const T& v) const
-	{ return te::compute_hash(v.size()); }
+	{ return te::hash_value(v.size()); }
 };
 
 TEST_CASE("Contains", "[contains]") {

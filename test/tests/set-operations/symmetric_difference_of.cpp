@@ -169,6 +169,16 @@ TEST_CASE("SymmetricDifferenceOf", "[symmetric-difference-of]") {
 		REQUIRE(symmetric_difference_of(a, b).empty());
 		REQUIRE(symmetric_difference_of(a, b, any_set_t{}, any_set_t{}, any_set_t{}).empty());
 	}
+
+	SECTION("symmetric_difference_of() only throws CopyConstructionErrors when copying types without a copy constructor") {
+		any_set_t a(std::make_tuple(UniqueInt::make(1), 2, 3, 4));
+		any_set_t b;
+		REQUIRE_THROWS_AS(symmetric_difference_of(a, b), const te::NoCopyConstructorError<UniqueInt>&);
+		REQUIRE_THROWS_AS(symmetric_difference_of(a, b), const te::CopyConstructionError&);
+		REQUIRE_NOTHROW(symmetric_difference_of(std::move(a), b));
+	}
+
+
 }
 
 

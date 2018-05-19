@@ -294,6 +294,16 @@ TEST_CASE("UnionOf", "[union-of]") {
 		REQUIRE(union_of(a, b).empty());
 		REQUIRE(union_of(a, b, any_set_t{}, any_set_t{}, any_set_t{}).empty());
 	}
+
+	SECTION("union_of() only throws CopyConstructionErrors when copying types without a copy constructor") {
+		any_set_t a(std::make_tuple(UniqueInt::make(1), 2, 3, 4));
+		any_set_t b(std::make_tuple(UniqueInt::make(1)));
+		REQUIRE_THROWS_AS(union_of(a, b), const te::NoCopyConstructorError<UniqueInt>&);
+		REQUIRE_THROWS_AS(union_of(a, b), const te::CopyConstructionError&);
+		REQUIRE_NOTHROW(union_of(std::move(a), std::move(b)));
+	}
+
+
 }
 
 

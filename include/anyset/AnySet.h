@@ -16,9 +16,27 @@
 /**
  * @mainpage AnySet Docs
  * 
- * AnySet is a [std::unordered_set<>](http://en.cppreference.com/w/cpp/container/unordered_set)-like 
- * container that can hold instances of any constructible type.  AnySet uses type erasure to store 
+ * te::AnySet is a [std::unordered_set](http://en.cppreference.com/w/cpp/container/unordered_set)-like 
+ * container that can hold instances of any constructible type.  te::AnySet uses type erasure to store 
  * values of arbitrary types uniformly.
+ *
+ * te::AnySet intentionally mimics the interface of [std::unordered_set](http://en.cppreference.com/w/cpp/container/unordered_set),
+ * providing member functions with the same name and semantics of many of the member functions of
+ * [std::unordered_set](http://en.cppreference.com/w/cpp/container/unordered_set).  The primary difference
+ * is that te::AnySet stores its contained objects inside of a wrapper class te::AnyValue.  
+ *
+ * te::AnyValue is not *not* a proxy class; te::AnySet stores actual instances of te::AnyValue which in
+ * turn store their respective type-erased values in-place.  This side-steps issues that arise from trying to use
+ * proxy references like the infamous [std::vector<bool>::reference](http://en.cppreference.com/w/cpp/container/vector_bool/reference).
+ * 
+ * 
+ *
+ * # Quick Reference
+ * ## Classes
+ * * te::AnySet
+ * * te::AnyValue
+ * * te::AnyHash
+ * * te::Hash
  */
 
 
@@ -247,7 +265,7 @@ private:
 
 	template <bool IsConst>	
 	struct BucketIterator:
-		public std::conditional_t<IsConst, const_iterator, iterator>
+		private std::conditional_t<IsConst, const_iterator, iterator>
 	{
 	private:
 		using self_type = BucketIterator<IsConst>;
@@ -264,21 +282,38 @@ private:
 		friend bool operator==(const BucketIterator<IsConst>& left, const BucketIterator<IsConst>& right)
 		{
 			if((left.bucket_ != right.bucket_) or (left.mask_ != right.mask_))
+			{
 				// Different buckets or different masks.
 				return false;
-			else if(left.get_pos().is_null())
-				// Both are end sentinals or left is an end sentinal and right is past-the-end.
-				return right.get_pos().is_null() or right.is_past_the_end();
-			else if(right.get_pos().is_null())
-				// Right is an end sentinal and left is past-the-end.
-				return left.is_past_the_end();
-			else
-				// Both point to the same value.
-				return left.get_pos() == right.get_pos();
+			}
+			if(
+				(left.get_pos().is_null() or left.is_past_the_end()) 
+				and (right.get_pos().is_null() or right.is_past_the_end())
+			)
+			{
+				return true;
+			}
+			return left.get_pos() == right.get_pos();
 		}
 
 		friend bool operator!=(const BucketIterator<IsConst>& left, const BucketIterator<IsConst>& right)
 		{ return not (left == right); }
+
+		self_type& operator++()
+		{
+			++get_pos();
+			return *this;
+		}
+
+		self_type operator++() const
+		{
+			auto cpy = *this;
+			++*this;
+			return cpy;
+		}
+
+		using base_type::operator->;
+		using base_type::operator*;
 
 	private:
 		BucketIterator(base_type pos, std::size_t bucket, std::size_t table_size):
@@ -289,6 +324,7 @@ private:
 
 		bool is_past_the_end() const
 		{
+			assert(not get_pos().is_null());
 			// Returns true if 'pos_' is past-the-end for the whole list or the element pointed to by
 			// 'pos_' has a hash in a different bucket (past-the-end for this bucket).
 			return get_pos().is_end() or ((get_pos()->hash & mask_) != bucket_);
@@ -332,7 +368,11 @@ public:
 		for(size_type i = 0; i < bucket_count(); ++i)
 		{
 			// each bucket is sorted WRT hash values of the nodes in the bucket
-			assert(std::is_sorted(begin(i), end(i), [](const auto& l, const auto& r){ return l.hash < r.hash; }));
+			assert(std::is_sorted(
+				this->begin(i),
+				this->end(i),
+				[](const auto& l, const auto& r){ return l.hash < r.hash; }
+			));
 			assert(std::all_of(begin(i), end(i), [&](const auto& v){ return bucket_index(v.hash) == i; }));
 		}
 		// the load factor is allowed to be not satisfied if the user changed the max_load_factor().
@@ -1167,10 +1207,15 @@ public:
 		preemptive_reserve(other.size());
 		for(const auto& any_v: other)
 		{
-			auto [pos, found] = find_position(any_v);
-			if(not found)
+			auto [pos, found] = find_position(make_key_info(any_v));
+			if(found)
+			{
 				continue;
-			unsafe_splice_at(pos, any_v.clone());
+			}
+			else
+			{
+				unsafe_splice_at(pos, any_v.clone());
+			}
 		}
 		assert(load_factor_satisfied());
 		return *this;
@@ -1204,13 +1249,17 @@ public:
 		preemptive_reserve(other.size());
 		for(auto pos = other.begin(); pos != other.end(); )
 		{
-			auto [ins_pos, found] = find_position(*pos);
-			if(not found)
+			auto [ins_pos, found] = find_position(make_key_info(*pos));
+			if(found)
 			{
 				++pos;
-				continue;
 			}
-			unsafe_splice_at(ins_pos, other.pop(pos));
+			else
+			{
+				node_handle node;
+				std::tie(node, pos) = other.pop(pos);
+				unsafe_splice_at(ins_pos, std::move(node));
+			}
 		}
 		return *this;
 	}
@@ -1540,6 +1589,8 @@ public:
 		};
 		if(nbuckets < bcount)
 		{
+			if(nbuckets == 0u)
+				nbuckets = 1u;
 			while(nbuckets < bcount and load_factor_good())
 				bcount /= 2;
 			if((bcount == bucket_count()) and load_factor_good())
@@ -1548,8 +1599,12 @@ public:
 		}
 		else if(nbuckets > bcount)
 		{
+			assert(max_bucket_count() >= nbuckets);
 			while(nbuckets > bcount)
+			{
+				assert(bcount > 0u);
 				bcount *= 2;
+			}
 		}
 		while(not load_factor_good())
 			bcount *= 2;
@@ -1633,8 +1688,6 @@ public:
 	 */
 	friend bool operator==(const AnySet& left, const AnySet& right)
 	{
-		left._assert_invariants();
-		right._assert_invariants();
 		if(left.size() != right.size())
 			return false;
 		// iterate over the set with the smaller table.
@@ -2396,7 +2449,37 @@ private:
 	float max_load_factor_{1.0};
 };
 
-
+/**
+ * @brief Helper function for creating an AnySet instance from a heterogeneous 
+ *        sequence of objects.
+ *
+ * @param elements - Parameter pack of values to initialize the set's contents with.
+ * @param hash_fn  - The hash function for the set.
+ * @param key_eq   - The equality comparison function for the set.
+ * @param alloc    - The allocator for the set.
+ *
+ * @return A newly-constructed AnySet instance that contains the provided elements.
+ *
+ * @relates AnySet
+ */
+template <
+	class HashFn = te::AnyHash,
+	class KeyEqual = std::equal_to<>,
+	class Allocator = std::allocator<te::AnyValue<HashFn, KeyEqual>>,
+	class ... Elements
+>
+te::AnySet<HashFn, KeyEqual, Allocator> make_anyset(
+	Elements&& ... elements,
+	const HashFn& hash_fn = HashFn(),
+	const KeyEqual& key_eq = KeyEqual(),
+	const Allocator& alloc = HashFn()
+)
+{
+	return te::AnySet<HashFn, KeyEqual, Allocator>(
+		std::forward_as_tuple(std::forward<Elements>(elements)...),
+		hash_fn, key_eq, alloc
+	);
+}
 
 
 } /* namespace te */	

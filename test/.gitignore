@@ -3,3 +3,4 @@ CMakeFiles
 cmake_install.cmake
 Makefile
 test-anyset
+test-all-platforms.sh

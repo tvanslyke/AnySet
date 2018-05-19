@@ -4,6 +4,7 @@
 #include <type_traits>
 
 namespace te {
+
 template <class Value, std::size_t Tag = 0, bool = std::is_class_v<Value> and not std::is_final_v<Value>>
 struct ConstValueHolder;
 

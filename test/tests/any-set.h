@@ -1,7 +1,6 @@
 #ifndef ANY_SET_TEST_INCLUDE_H
 #define ANY_SET_TEST_INCLUDE_H
 #include "anyset/AnySet.h"
-#include "anyset/SetOperations.h"
 #include <cstddef>
 #include <string>
 #include <vector>
@@ -56,11 +55,7 @@ template <>
 struct te::Hash<UniqueInt> {
 
 	std::size_t operator()(const UniqueInt& p) const
-	{ return p ? te::compute_hash(*p) : 0u; }
-};
-
-static const std::array<int, 10> test_ints{
-	0, 1, 2, 3, 4, 5, 6, 7, 8, 9
+	{ return p ? te::hash_value(*p) : 0u; }
 };
 
 static const std::array<std::string, 10> string_names{

@@ -4,7 +4,6 @@ project(test-any-set)
 set(CMAKE_CXX_STANDARD 17)
 include_directories("./../include/")
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Og -Wall -Wextra")
 add_executable(test-anyset
 	tests/test-main.cpp
 	tests/assign.cpp
@@ -36,6 +35,16 @@ add_executable(test-anyset
 	tests/splice.cpp
 	tests/splice_or_copy.cpp
 	tests/swap_member.cpp
+	tests/update.cpp
+	tests/set-operations/union_of.cpp
+	tests/set-operations/intersection_of.cpp
+	tests/set-operations/difference_of.cpp
+	tests/set-operations/symmetric_difference_of.cpp
+	tests/set-operations/subset_superset.cpp
+	tests/value-operations/polymorphic_cast.cpp
+	tests/value-operations/exact_cast.cpp
+	tests/value-operations/unsafe_cast.cpp
+	tests/value-operations/as.cpp
 )
 
 

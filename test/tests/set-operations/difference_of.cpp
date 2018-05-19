@@ -169,6 +169,16 @@ TEST_CASE("DifferenceOf", "[difference-of]") {
 		b.insert("asdf"s, 1, 2, 100.0);
 		REQUIRE(difference_of(a, b).empty());
 	}
+
+
+	SECTION("difference_of() only throws CopyConstructionErrors when copying types without a copy constructor") {
+		any_set_t a(std::make_tuple(UniqueInt::make(1), 2, 3, 4));
+		any_set_t b;
+		REQUIRE_THROWS_AS(difference_of(a, b), const te::NoCopyConstructorError<UniqueInt>&);
+		REQUIRE_THROWS_AS(difference_of(a, b), const te::CopyConstructionError&);
+		REQUIRE_NOTHROW(difference_of(std::move(a), b));
+	}
+
 }
 
 

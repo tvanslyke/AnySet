@@ -63,8 +63,6 @@ private:
 
 		friend bool operator==(Iterator<IsConst> left, Iterator<IsConst> right)
 		{
-			assert(left.pos_);
-			assert(right.pos_);
 			return left.pos_ == right.pos_;
 		}
 

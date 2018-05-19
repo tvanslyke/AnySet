@@ -3,25 +3,57 @@
 
 #include <functional>
 #include <cstddef>
+#include <cstdint>
 #include <complex>
 #include <utility>
 #include <tuple>
+#include <bitset>
 #include "AnyHash.h"
 #include "AnySet.h"
 
 namespace te {
-inline std::size_t hash_combine(std::size_t first, std::size_t second)
-{ return first ^ (second + 0x9e3779b9 + (first << 6) + (first >> 2)); }
 
+
+/**
+ * @brief Combine two hash values using a formula that is compatible with 
+ *        boost::hash_combine().
+ * 
+ * @note This function is not order agnostic with respect to its arguments.
+ *       That is, the returned hash value can change if the argument order
+ *       changes.
+ * 
+ * @param first  - First hash value.
+ * @param second - Second hash value.
+ * 
+ * @return A hash value obtained from combining the two given hash values.
+ */ 
+inline std::size_t hash_combine(std::size_t first, std::size_t second)
+{
+	return first ^ (second + std::size_t(0x9e3779b9ull) + (first << 6) + (first >> 2));
+}
+
+
+/**
+ * @brief Combine an arbitrary number of hash values using a formula that is 
+ *        compatible with boost::hash_combine().
+ * 
+ * @note This function is not order agnostic with respect to its arguments.
+ *       That is, the returned hash value can change if the argument order
+ *       changes.
+ * 
+ * @param first  - First hash value.
+ * @param second - Second hash value.
+ * @param args   - Other hash values.
+ * 
+ * @return A hash value obtained from combining the given hash values.
+ */ 
 template <
-	class T, 
-	class U, 
-	class ... Args, 
+	class T, class U, class ... Args, 
 	class = std::enable_if<
 		(sizeof...(Args) > 0u) 
 		and std::is_same_v<T, std::size_t> 
 		and std::is_same_v<U, std::size_t>
-		and std::conjunction_v<std::is_same_v<Args, std::size_t>...>
+		and std::conjunction_v<std::is_same<Args, std::size_t>...>
 	>
 >
 inline std::size_t hash_combine(T first, U second, Args ... args)
@@ -36,16 +68,16 @@ struct ArgHash {
 	std::size_t operator()(T&& ... args) const
 	{
 		if constexpr(sizeof...(args) == 1u)
-			return compute_hash(std::forward<T>(args) ...);
+			return hash_value(std::forward<T>(args) ...);
 		else
-			return hash_combine(compute_hash(std::forward<T>(args)) ...);
+			return hash_combine(hash_value(std::forward<T>(args)) ...);
 	}
 };
 } /* namespace detail */
 
 
 
-// overload compute_hash for std::tuple
+/// Specialize te::Hash for std::tuple.
 template <class ... T>
 struct Hash<std::tuple<T...>>
 {
@@ -53,7 +85,7 @@ struct Hash<std::tuple<T...>>
 	{ return std::apply(detail::ArgHash{}, tup); }
 };
 
-// overload compute_hash for std::pair
+/// Specialize te::Hash for std::pair.
 template <class T, class U>
 struct Hash<std::pair<T, U>>
 {
@@ -61,7 +93,7 @@ struct Hash<std::pair<T, U>>
 	{ return std::apply(detail::ArgHash{}, p); }
 };
 
-// overload compute_hash for std::pair
+/// Specialize te::Hash for std::complex.
 template <class T>
 struct Hash<std::complex<T>>
 {
@@ -69,21 +101,13 @@ struct Hash<std::complex<T>>
 	{ return std::invoke(detail::ArgHash{}, real(c), imag(c)); }
 };
 
+/// Specialize te::Hash for std::array.
 template <class T, std::size_t N>
 struct Hash<std::array<T, N>>
 {
 	std::size_t operator()(const std::array<T, N>& a) const
 	{ return std::apply(detail::ArgHash{}, a); }
 };
-
-template <class H, class E, class A>
-std::size_t compute_hash(const AnySet<H, E, A>& set)
-{
-	std::size_t hash_v = 0;
-	for(const auto& v: set)
-		hash_v = hash_combine(hash_v, compute_hash(v));
-	return hash_v;
-}
 
 } /* namespace te */
 

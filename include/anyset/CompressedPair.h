@@ -6,6 +6,7 @@ namespace te {
 
 namespace detail {
 
+
 template <class T>
 struct CompressedPairBase:
 	private ValueHolder<T>
