@@ -6,6 +6,8 @@ The documentation for AnySet can be found [here](https://tvanslyke.github.io/Any
 * [te::AnySet Documentation](https://tvanslyke.github.io/AnySetDocs/structte_1_1AnySet.html)
 * [te::AnyValue Documentation](https://tvanslyke.github.io/AnySetDocs/structte_1_1AnyValue.html)
 
+### [Tutorials](doc/tutorial/README.md)
+
 ## Installation
 AnySet can be installed via the standard git-clone -> CMake -> make -> install procedure:
 ```sh
