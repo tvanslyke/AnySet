@@ -1,18 +1,32 @@
 # AnySet Tutorials
 
-## Quick Start
-To use `te::AnySet` include the header `AnySet.h`:
-```c++
-#include "anyset/AnySet.h"
-```
+## [AnySet Documentation]()
 
-This header exposes `te::AnySet`, `te::AnyValue`, `te::AnyHash`, `te::Hash`
+## Contents
+1. [Constructing an AnySet object](#constructing-an-anyset-object)
+    * [Initializing with Homogeneous Elements](#initializing-with-homogeneous-elements)
+    * [Initializing with Heterogeneous Elements](#initializing-with-heterogeneous-elements)
+2. [Adding and Removing Elements](#adding-and-removing-elements)
+    * [Adding Non-Copy-Constructible Values](#adding-non-copy-constructible-values)
+    * [Adding Non-Copy-Constructible Values](#adding-non-copy-constructible-values)
+    * [Adding Non-Movable Values](#adding-non-movable-values)
+    * [Adding Several Values at Once](#adding-several-values-at-once)
+    * [Removing Elements](#removing-elements)
+    * [Interset Operations](#interset-operations)
+3. [Element Lookup and Similar Operations](#element-lookup-and-similar-operations)
+    * [Find an Element](#find-an-element)
+    * [Check if an Object Exists](#check-if-an-object-exists)
+4. [Core Set-Theoretic Operations](#core-set-theoretic-operations)
+5. [AnyValue (AnySet's `value_type`)](#anyvalue-anysets-value_type)
+    * [Accessing the Contained Value Statically](#accessing-the-contained-value-statically)
+    * [Accessing the Contained Value Dynamically](#accessing-the-contained-value-dynamically)
+    * [Higher-Level Accessors](#higher-level-accessors)
 
 
-## Constructing an AnySet Object
-Shown here are some of the ways that one can initialize an AnySet object.
 
-### Initializing with Homogeneous Elements
+# Constructing an AnySet Object
+
+## Initializing with Homogeneous Elements
 Construct from an initializer-list:
 ```c++
 te::AnySet<> set({1, 2, 3, 4, 5});
@@ -33,7 +47,7 @@ te::AnySet<> set(names.begin(), names.end());
 // set = {"Albert"s, "Becky"s, "Thomas"s, "Noel"s, "Alexis"s}
 ```
 
-### Initializing with Heterogeneous Elements
+## Initializing with Heterogeneous Elements
 Construct from a `std::tuple`.
 ```c++
 using std::literals;
@@ -49,9 +63,9 @@ te::AnySet<> set(te::make_anyset(std::forward<Args>(args)...));
 // set = {args...};
 ```
 
-## Modifying Sets: Adding and Erasing Elements
+# Adding and Removing Elements
 
-### Adding Non-Copy-Constructible Values
+## Adding Non-Copy-Constructible Values
 Use `AnySet::emplace<T>()` to add objects of non-copy-constructible types.
 ```c++
 te::AnySet<> set;
@@ -84,7 +98,7 @@ assert(inserted);
 assert(**pos == 2);
 ```
 
-### Adding Non-Movable Values
+## Adding Non-Movable Values
 Any constructible type that is also hashable and equality-comparable can be added to an AnySet instance.
 ```c++
 namespace custom {
@@ -112,9 +126,9 @@ te::AnySet<> set;
 set.emplace<custom::LockGuard>(some_mutex);
 ```
 
-### Adding Several Values at Once
+## Adding Several Values at Once
 
-#### Variadic Insertion
+### Variadic Insertion
 Several values can be added simultaneously:
 ```c++
 te::AnySet<> set;
@@ -135,7 +149,7 @@ assert(inserted[1]);           // 0.0 not already in the set; inserted
 assert(not inserted[2]);       // 100 already in the set; not inserted
 ```
 
-#### Homogeneous Sequence
+### Homogeneous Sequence
 Sequences of same-type values can be inserted using both iterator range insertion and `initializer_list` insertion.
 ```c++ 
 std::vector<int> v{1, 2, 3, 4, 5};
@@ -162,9 +176,58 @@ count = set.insert({5, 6, 7, 8, 9, 10});
 assert(count == 2);
 ```
 
-### Adding Values from Another AnySet Instance
+## Removing Elements
+The `.erase()` method can be used to remove elements from the set:
 
-#### Update (copy)
+```c++
+auto set = te::make_anyset("Some String"s, 3.1415, 100, std::bitset<4>(0b0101u));
+auto pos = set.find("Some String"s);
+
+// iterator overload - returns iterator to element after the erased element
+pos = set.erase(pos);
+// set == {3.141592, 100, std::bitset<3>(0b010u)}
+
+if(pos != set.end())
+	std::cout << "Element after 'Some String': " << *pos << std::endl;
+else
+	std::cout << "'Some String' was at the end of the set" << std::endl;
+
+// range erasure - returns iterator to the element after the last erased element
+// erase all values but 3.1415:
+pos = set.find(3.1415);
+
+// erase elements before 3.1415
+pos = set.erase(set.begin(), pos);
+// set = {3.1415, ...}
+
+// erase elements after 3.1415
+set.erase(std::next(pos), set.end());
+// set = {3.1415}
+
+assert(set.size() == 1);
+assert(*pos == 3.1415);
+
+// finally, by-value erasure: give the value of the element to be erased.
+auto count = set.erase(100);
+
+// `count` is the number of elements erased, either 0 or 1
+assert(count == 0u); // == 0u because 100 was not in the set
+
+count = set.erase(3.1415);
+assert(count == 1u); // == 1u because 3.1415 was the last element in the set
+assert(set.empty());
+```
+
+To completely clear the set, use the `.clear()` method:
+```c++
+auto set = te::make_anyset("Some String"s, 3.1415, 100, std::bitset<4>(0b0101u));
+set.clear();
+// set == {}
+```
+
+## Interset Operations
+
+### Update (copy)
 To add copies of elements from one AnySet instance to another (effectively computing an inplace set union), use the `.update()` method:
 ```c++
 te::AnySet<> dest = {1, 2, 3, 4, 5};
@@ -175,7 +238,7 @@ dest.update(src);
 ```
 **Note**: Attempting to copy non-copy-constructible values from `src` to `dest` via `.update()` will result in an exception being thrown.  See the [FIXME documentation]() for details.
 
-#### Update (move)
+### Update (move)
 To move elements from one AnySet instance to another (effectively computing an inplace set union), use the `.update()` method with an rvalue:
 ```c++
 te::AnySet<> dest = {1, 2, 3, 4, 5};
@@ -186,7 +249,7 @@ dest.update(std::move(src));
 ```
 **Note**: This overload does not call copy or move constructors of the contained element types, instead this operation splices nodes from `src` to `dest` directly.
 
-#### Splicing
+### Splicing
 To move specific elements from one set to another in an efficient manner, use the `splice` methods.
 
 In the below examples, assume `set1` and `set2` have been declared like so:
@@ -243,7 +306,7 @@ else
 
 The `.splice_or_copy()` methods are equivalent to the `.splice()` methods, except that if the source set (`set2` in the above examples) is not a non-const rvalue, the elements from the source set are copied, rather than moved.  This means that when the copying overloads are called, the source set is not modified.  It also means that if an attempt is made to copy a non-copy-constructible element from the source set, an exception will be thrown (much like `.update()`, see the [FIXME relevant documentation]() for details).
 
-#### Node-Based Operations (.pop(), .dup(), and .push())
+### Node-Based Operations (.pop(), .dup(), and .push())
 Node-based operations present a lower-level interface to modifying AnySet instances at the single-node level.
 
 `.pop()` is semantically equivalent to the iterator overload of `.erase()`, except that it returns a `node_handle` instance (effectively a `std::unique_ptr<te::AnyValue<Hash, KeyEqual>>`) to the "erased" element (and an iterator to the following element).  As long as this node handle exists, pointers and references to the popped element are still valid (for the specifics of iterator invalidation, see the [FIXME relevant documentation]()).
@@ -318,8 +381,123 @@ assert(set1.contains_value(*pos));
 assert(set2.contains_value(*pos));
 ```
 
+# Element Lookup and Similar Operations
 
-### Core Set-Threoretic Operations
+## Find an Element
+The `.find()` member function can be used to obtain an iterator to an element with a specific value:
+```c++
+te::AnySet<> set = te::make_anyset("Some String"s, 3.1415, 100, std::bitset<4>(0b0101u));
+
+// get an iterator to "Some String"s
+auto pos = set.find("Some String"s);
+assert(*pos == "Some String"s);
+
+// get an iterator to "Some Other String"s
+auto pos = set.find("Some Other String"s);
+if(pos == set.end()) // evaluates to 'true' in this example
+	std::cout << "'Some Other String' not in the set." << std::endl;
+else
+	std::cout << "Found 'Some Other String': " << *pos << std::endl;
+```
+Outputs:
+```
+'Some Other String' not in the set.
+```
+
+## Check if an Object Exists
+The `.contains()`, `.contains_eq()`, `.contains_value()`, `.contains_value_eq()`, and `.count()` methods can be used to query whether a set contains a given value.
+
+### `.contains()` and `.contains_eq()`
+Use the `.contains()` method to check if an element in the set compares equal to the given value using the `te::AnySet<HashFn, KeyEqual, Allocator>` instance's `KeyEqual` comparison function object.  The `.contains_eq()` method overrides this behavior and uses `operator==()` to compare the objects (by default, the comparison object is `std::equal_to<>`; in this case, both methods are semantically equivalent).
+
+The `.count()` method is equivalent to the `.countains()` method, except that its return type is `size_type` (returns either 0 or 1).
+
+**Example: Default behavior with std::equal_to<>**
+```c++
+te::AnySet<> set = te::make_anyset("Some String"s, 3.1415, 100, std::bitset<4>(0b0101u));
+
+// With default template parameters, `.contains()` and `.contains_eq()` are identical
+assert(set.contains("Some String"s));
+assert(set.contains_eq("Some String"s));
+assert(not set.contains(2.5));
+assert(not set.contains_eq(2.5));
+```
+
+**Example: Non-standard comparison function object**
+```c++
+// KeyEqual type that only checks if the values return the same value for `.size()`.
+struct SizeEquals {
+	template <class T, class U>
+	bool operator()(const T& l, const U& r) const
+	{ return l.size() == r.size(); }
+};
+
+// Hash function that just hashes the result of `.size()` 
+struct SizeHash {
+	template <class T>
+	std::size_t operator()(const T& v) const
+	{ return te::hash_value(v.size()); }
+};
+
+ ...
+
+te::AnySet<SizeHash, SizeEquals> set({
+	"a"s, "ab"s, "abc"s, "abcd"s, "abcde"s
+});
+
+// Works as expected:
+assert(set.contains("abc"s));
+assert(set.contains_eq("abc"s));
+
+// The subtlety is here:
+assert(set.contains("123"s));        // only the sizes are compared: "abc"s.size() == "123"s.size()
+assert(not set.contains_eq("123"s)); // the actual strings, themselves, are compared: "abc"s != "123"s
+
+// Type safety still matters though:
+assert(not set.contains(std::bitset<3>()));    // No object of type `std::bitset<3>` is in the set
+assert(not set.contains_eq(std::bitset<3>())); // Same
+```
+
+### `.contains_value()` and `.contains_value_eq()`
+`.contains_value()` and `.contains_value_eq()` are restricted versions of `.contains()` and `.contains_eq()` that only accept a parameter of type `te::AnyValue<HashFn, KeyEqual>` (possibly obtained from another `te::AnySet<HashFn, KeyEqual>` instance).  These functions return true if the set contains an element that compares equal to, and has has the same type as, the object contained in the provided AnyValue instance.  `.contains_value()` uses the AnySet's `KeyEqual` comparison function object to check for equality, while `.contains_value_eq()` uses `operator==()`.  
+
+```c++
+// KeyEqual type that only checks if the values return the same value for `.size()`.
+struct SizeEquals {
+	template <class T, class U>
+	bool operator()(const T& l, const U& r) const
+	{ return l.size() == r.size(); }
+};
+
+// Hash function that just hashes the result of `.size()` 
+struct SizeHash {
+	template <class T>
+	std::size_t operator()(const T& v) const
+	{ return te::hash_value(v.size()); }
+};
+
+ ...
+
+te::AnySet<SizeHash, SizeEquals> set({
+	"a"s, "ab"s, "abc"s, "abcd"s, "abcde"s
+});
+
+te::AnySet<SizeHash, SizeEquals> other({
+	"1"s, "12"s, "123"s, "1234"s, "12345"s
+});
+
+const auto& any_v = *set.find("abc"s);
+
+assert(set.contains_value(any_v));   // only the sizes are compared: "abc"s.size() == "abc"s.size()
+assert(other.contains_value(any_v)); // only the sizes are compared: "abc"s.size() == "123"s.size()
+
+assert(set.contains_value_eq("abc"s));       // the actual values of the strings are compared: "abc"s == "abc"s
+assert(not other.contains_value_eq("abc"s)); // the actual values of the strings are compared: "abc"s != "123"s
+```
+
+**Note**: Presently `.contains()` and `.contains_eq()` also behave this way when given an AnyValue instance.  This may be changed in the future in the name of not having a special case, so users should not rely on this.
+
+# Core Set-Theoretic Operations
 To enable [core set theoretic operations](https://en.wikipedia.org/wiki/Set_%28abstract_data_type%29#Core_set-theoretical_operations) and their corresponding operator overloads, include the header `SetOperations.h`:
 ```c++
 #include "anyset/SetOperations.h"
@@ -347,6 +525,231 @@ std::cout << set << std::endl;
 Possible Output (particular order not guaranteed):
 ```
 {Some String, 0101, 100, 3.1415}
+```
+
+# AnyValue (AnySet's `value_type`)
+The class template `te::AnyValue<HashFn, Compare>` is a `std::any`-like type that is capable of storing `const` objects of any constructible type.  AnyValue can only store *values*, object references cannot be stored in AnyValue instances (but pointers can).  AnyValue objects have no public constructors and are neither copyable nor movable.  AnyValue is *not* a proxy class (like `std::vector<bool>::refernce`): AnySets store actual instances of AnyValue, and expose them in its public interface.  
+
+One can make use of AnySet without ever interacting directly with AnyValue's interface, but it provides some powerful methods of accessing the contained value that are worth knowing.
+
+## Accessing the Contained Value Statically
+
+### `exact_cast<T>()`
+`exact_cast<T>()` obtains a reference or pointer to (or copy of) the value contained in an AnyValue instance with a specified type.  `exact_cast<T>()` succeeds only when the contained object's type matches the casted-to type exactly (modulo references and `const`/`volatile` qualifiers).  A reference to AnyValue can be `exact_cast()`'d to a reference to `const T`, while a pointer to AnyValue can be casted to pointer to `const T`.  
+
+```c++
+auto set = te::make_anyset("Some String"s, 3.1415, 100, std::bitset<4>(0b0101u));
+// get a reference to the AnyValue instance containing "Some String"s
+const auto& any_v = *set.find("Some String"s);
+
+// use exact_cast() to access the contained string.
+const std::string& str = te::exact_cast<const std::string&>(any_v);
+
+// throws std::bad_cast: any_v doesn't contain an 'int'
+// const int& i = te::exact_cast<const int&>(any_v);
+
+// get a pointer to the contained string
+const std::string* p_str = te::exact_cast<const std::string*>(&any_v);
+assert(p_str);
+assert(p_str == &str);
+
+// throws std::bad_cast: any_v doesn't contain a 'std::string*'
+// const std::string* p = te::exact_cast<const std::string*>(any_v);
+
+// returns null
+const int* p_int = te::exact_cast<const int*>(&any_v);
+assert(not p_int);
+```
+
+### `unsafe_cast<T>()`
+`unsafe_cast<T>()` obtains a reference to (or copy of) the value contained in an AnyValue instance with a specified type.  `unsafe_cast<T>()` does no type checking; an `unsafe_cast()` that casts to a type other than the exact type of contained object (modulo references and `const`/`volatile` qualifiers) invokes undefined behavior.  A reference to AnyValue can be `exact_cast()`'d to a reference to `const T`.  Unlike `exact_cast()`, `unsafe_cast()` has no overloads for a pointers to AnyValue instances.
+
+```c++
+auto set = te::make_anyset("Some String"s, 3.1415, 100, std::bitset<4>(0b0101u));
+// get a reference to the AnyValue instance containing "Some String"s
+const auto& any_v = *set.find("Some String"s);
+
+// use unsafe_cast() to access the contained string
+const std::string& str = te::unsafe_cast<const std::string&>(any_v);
+
+// undefined behavior: any_v doesn't contain an 'int'
+// const int& i = te::exact_cast<const int&>(any_v);
+
+// fails to compile
+// const std::string* p_str = te::exact_cast<const std::string*>(&any_v);
+
+// undefined behavior: any_v doesn't contain a 'std::string*'
+// const std::string* p = te::exact_cast<const std::string*>(any_v);
+```
+
+## Accessing the Contained Value Dynamically
+
+### `polymorphic_cast<T>()`
+`polymorphic_cast<T>()` is the only cast function capable of casting through the inheritence heirarchy of an AnyValue's contained object's type.  `polymorphic_cast<T>()` cannot cast to final or non-class type (such a cast fails to compile), and will fail at runtime if the contained object is of final or non-class type, even if the target type is an accessible base of the contained type.  The contained object does not need to be of polymorphic type for `polymorphic_cast<T>()` to successfully cast through its inheritence heirarchy.
+
+```c++
+namespace silly {
+// silly inheritence heirarchy; non-polymorphic
+struct MyString:
+	public std::string,
+	public std::bitset<8>
+{
+	MyString(const std::string& s): std::string(s) { }
+};
+
+// sillier yet; introduce a polymorphic type into the heirarchy
+struct MyStringError:
+	public MyString,
+	public std::runtime_error
+{
+	MyStringError(const std::string& s):
+		MyString(s), std::runtime_error("Error: " + s)
+	{
+		
+	}
+};
+
+// overloads so ADL can find hash_value() in AnyHash::operator()
+std::size_t hash_value(const MyString& s)
+{ return te::hash_value(std::string_view(s)); }
+
+std::size_t hash_value(const MyStringError& s)
+{ return te::hash_value(std::string_view(s)); }
+
+} /* namespace silly */
+
+ ...
+
+using H = te::AnyHash;
+using E = std::equal_to<>;
+using namespace std::literals;
+using namespace silly;
+using any_t = te::AnyValue<H, E>;
+{
+	std::unique_ptr<any_t> my_string = 
+		te::make_any_value<MyString, H, E>(te::AnyHash{}, "Some string."s);
+	const auto& as_my_string = te::polymorphic_cast<const MyString&>(*my_string);
+	const auto& as_string = te::polymorphic_cast<const std::string&>(*my_string);
+	const auto& as_bitset = te::polymorphic_cast<const std::bitset<8>&>(*my_string);
+	std::cout << "std:string: " << as_string << '\n';
+	std::cout << "bitset<8>:  " << as_bitset << '\n' << std::endl;
+}
+{
+	std::unique_ptr<any_t> my_string = 
+		te::make_any_value<MyStringError, H, E>(te::AnyHash{}, "Some string error message."s);
+	const auto* as_my_string = te::polymorphic_cast<const MyString*>(my_string.get());
+	assert(static_cast<bool>(as_my_string));
+	const auto* as_string = te::polymorphic_cast<const std::string*>(my_string.get());
+	const auto* as_bitset = te::polymorphic_cast<const std::bitset<8>*>(my_string.get());
+	const auto* as_exception = te::polymorphic_cast<const std::exception*>(my_string.get());
+	std::cout << "std:string: " << *as_string << '\n';
+	std::cout << "bitset<8>:  " << *as_bitset << '\n';
+	std::cout << ".what():    " << as_exception->what() << std::endl;
+}
+```
+
+Outputs:
+```
+std:string: Some string.
+bitset<8>:  00000000
+
+std:string: Some string error message.
+bitset<8>:  00000000
+.what():    Error: Some string error message.
+```
+
+## Higher-Level Accessors
+
+### `get<T>()`, `as<T>()` and `try_as<T>()`
+`as<T>()` attempts to access the contained value in an `AnyValue` instance by first attempting an `exact_cast<T>()` followed by a `polymorphic_cast<T>()`.  If both casts fail, then a `std::bad_cast` is thrown.  If either cast succeeds, a reference to the contained object is returned.  The `polymorphic_cast<T>()` is only attempted if the target type of the cast is a non-final class type.  `as<T>()` can only be called on a reference to AnyValue and returns a const reference to the target type, `T`.  The target type `T`, must be absent of any top-level `const/volatile` qualifiers or reference decorations (i.e. it should be "just the type").
+
+`get<T>()` is equivalent to `as<T>()`.
+
+```c++
+auto set = te::make_anyset("Some String"s, 3.1415, 100, std::bitset<4>(0b0101u));
+// get a reference to the AnyValue instance containing "Some String"s
+const auto& any_v = *set.find("Some String"s);
+
+// use as<std::string>() to access the contained string
+const std::string& str = te::as<std::string>(any_v);
+
+// fails to compile 
+// const std::string& str = te::as<const std::string&>(any_v);
+
+// throws std::bad_cast: any_v doesn't contain an 'int'
+// const int& i = te::as<int>(any_v);
+```
+
+`try_as<T>()` is nearly identical to `as<T>()` except that it returns a pointer to the contained value instead of a reference.  In the event that the cast fails, no exceptions are thrown, instead the returned pointer is null.
+
+```c++
+auto set = te::make_anyset("Some String"s, 3.1415, 100, std::bitset<4>(0b0101u));
+// get a reference to the AnyValue instance containing "Some String"s
+const auto& any_v = *set.find("Some String"s);
+
+// use try_as<std::string>() to access the contained string
+const std::string* str = te::try_as<std::string>(any_v);
+assert(str);
+
+// returns null
+const int* i = te::try_as<int>(any_v);
+assert(not i);
+
+// fails to compile 
+// const std::string& str = te::try_as<const std::string&>(any_v);
+
+// fails to compile: return type of the cast would be `const std::string**` 
+//                   but `str` has type `const std::string*`
+// const std::string* str = te::try_as<const std::string*>(any_v);
+```
+
+
+### `get_default_ref<T>()` and `get_default_val<T>()`
+`get_default_ref<T>()` is nearly identical to `as<T>()` except that instead of throwing a `std::bad_cast` on failure, returns a given 'default' value, by reference.  The default value must be an lvalue reference to an object of the same type as the target type.
+
+```c++
+auto set = te::make_anyset("Some String"s, 3.1415, 100, std::bitset<4>(0b0101u));
+// get a reference to the AnyValue instance containing "Some String"s
+const auto& any_v = *set.find("Some String"s);
+
+// use as<std::string>() to access the contained string
+const std::string empty_str = "";
+const std::string& str = te::get_default_ref<std::string>(any_v, empty_str);
+assert(str == "Some String"s);
+assert(str != empty_str);
+
+
+// try to access 'any_v' as an 'int'
+int default_int = -1;
+const int& i = te::get_default_ref<int>(any_v, default_int);
+assert(&i == &default_int); // any_v doesn't contain an 'int'; default_int returned
+
+// fails to compile: default argument is not of type 'double'
+// const double& dbl = te::get_default_ref<double>(any_v, -1);
+
+// fails to compile: default argument is an rvalue (must be an lvalue)
+// const double& dbl = te::get_default_ref<double>(any_v, -1.0);
+```
+
+`get_default_val<T>()` is similar to `get_default_ref<T>()` except that it returns by value.  The default value must be convertible to the target type (the conversion is done via an explicit static_cast<T>()).
+
+```c++
+auto set = te::make_anyset("Some String"s, 3.1415, 100, std::bitset<4>(0b0101u));
+// get a reference to the AnyValue instance containing "Some String"s
+const auto& any_v = *set.find("Some String"s);
+
+// use get_default_val<std::string>() to access the contained string
+std::string str = te::get_default_ref<std::string>(any_v, empty_str);
+assert(str == "Some String"s);
+
+// try to access 'any_v' as an 'int'
+const int& i = te::get_default_val<int>(any_v, -1);
+assert(i == -1); // any_v doesn't contain an 'int'; default '-1' is returned 
+
+// compiles fine: default argument is convertible to 'double'
+const double& dbl = te::get_default_val<double>(any_v, -1);
+
+assert(dbl == -1.0); // any_v doesn't contain an 'double'; default '-1.0' is returned 
 ```
 
 
