@@ -17,10 +17,19 @@ assert(set.contains("Hello"s));
 std::cout << set << std::endl;
 // prints: {1, 3.1415, Add, 3, a, few, 011, 4, strings, 2, Hello}
 ```
+## Contents
+* [Quick Links](#quick-links)
+* [Installation](#installation)
+* [Contributing](#contributing)
+* [Authors](#authors)
+* [License](#license)
 
+## Quick Links 
+### [Tutorials](doc/tutorial/README.md)
 See the [tutorial](doc/tutorial/README.md) page for in-depth usage examples and discussions of AnySet's features.
 
-See the [comprehensive documentation](https://tvanslyke.github.io/AnySetDocs/) for the details of its usage.
+### [Documentation](https://tvanslyke.github.io/AnySetDocs/)
+See the [comprehensive documentation](https://tvanslyke.github.io/AnySetDocs/) for the details AnySet's usage.  
 
 ## Installation
 AnySet can be installed via the standard git-clone -> CMake -> make -> install procedure:
@@ -70,11 +79,11 @@ The test suite compiles and passes with the following compilers:
 
 Other versions or combinations of any of the above compilers and STL implementations may work as well, but have not been tested.
 
-### Contributing
+## Contributing
 Pull requests and bug reports are welcome!
 
-### Authors
+## Authors
 * **Timothy VanSlyke** - vanslyke.t@husky.neu.edu
 
-### License
+## License
 This project is licensed under the MIT License.

@@ -87,22 +87,28 @@ struct AnyList;
 
 template <class HashFn, class Compare>
 struct AnyValue;
-
+/// @name Queries
+/// @{
 /**
  * @brief Check if @p any_v contains an object of type T.
+ *
+ * `T` must match the contained type exactly; is() returns false, even if T is an accessible base of 
+ *  the type of the contained object.
+ *
+ * @tparam T - The type of the contained value, absent of reference (&) or const/volatile qualifiers.
  *
  * @param any_v - The AnyValue instance whose contained type is to be queried.
  * 
  * @return true if the AnyValue instance contains an object of type T, false otherwise.
  * 
  * @see AnyValue
- * @see exact_cast()
- * @see unsafe_cast()
  * 
  * @relates AnyValue
  */
 template <class T, class H, class C>
 bool is(const AnyValue<H, C>& any_v);
+
+/// @} Queries
 
 template <class T, class H, class C>
 const T* try_as(const AnyValue<H, C>& self);
@@ -175,13 +181,19 @@ std::unique_ptr<TypedValue<T, H, C>> make_typed_value(H hash_fn, Args&& ... args
 } /* namespace detail */
 /// @endinternal
 
+/// @name Maker/Factory Functions
+/// @brief Note that these functions are intended *primarilly* for internal use.
+/// @{
+
 /**
  * @brief Constructs a std::unique_ptr<AnyValue<H, C>> suitable for splicing into
  *        an AnySet instance.
  * 
  * @tparam T - The type of the contained value.
- * @tparam H - The type of hash function object used by AnySet instances that 
- * @tparam C - The type of the contained value.
+ * @tparam H - The type of the hash function object used by AnySet instances that the
+ *             returned AnyValue instance can be spliced into.
+ * @tparam H - The type of the comparison (KeyEqual) function object used by AnySet 
+ *             instances that the returned AnyValue instance can be spliced into.
  * 
  * @param hash_value - The resultant hash code obtained from hashing the to-be-constructed 
  *                     @p T instance.
@@ -205,8 +217,10 @@ std::unique_ptr<AnyValue<H, C>> make_any_value(std::size_t hash_value, Args&& ..
  *        an @p AnySet<@p H, @p C> instance.
  * 
  * @tparam T - The type of the contained value.
- * @tparam H - The type of hash function object used by AnySet instances that 
- * @tparam C - The type of the contained value.
+ * @tparam H - The type of the hash function object used by AnySet instances that the
+ *             returned AnyValue instance can be spliced into.
+ * @tparam H - The type of the comparison (KeyEqual) function object used by AnySet 
+ *             instances that the returned AnyValue instance can be spliced into.
  * 
  * @param hasher - The instance of @p H to use to compute the hash of contained @p T
  *                 object after it is constructed in the AnyValue.
@@ -219,6 +233,8 @@ std::unique_ptr<AnyValue<H, C>> make_any_value(std::size_t hash_value, Args&& ..
  */
 template <class T, class H, class C, class ... Args>
 std::unique_ptr<AnyValue<H, C>> make_any_value(H hasher, Args&& ... args);
+
+/// @}
 
 /**
  * @class AnyValue
@@ -233,7 +249,8 @@ std::unique_ptr<AnyValue<H, C>> make_any_value(H hasher, Args&& ... args);
  * Following the conventions of @p std::any, the value contained in a particular AnyValue 
  * instance can be obtained using special 'cast' functions.  The cast functions provided for
  * AnyValue are exact_cast(), polymorphic_cast(), and unsafe_cast().  Additionally, non-cast-style
- * accessor and query functions is(), as(), and try_as() are provided as well.
+ * accessor and query functions is(), as(), get(), get_default_ref(), get_default_val(), and try_as() 
+ * are provided as well.
  *
  *
  * @tparam HashFn    - The type of the hash function object used in the corresponding 
@@ -423,7 +440,11 @@ protected:
 
 public:
 	/**
-	 *  The hash code obtained by invoking an instance of @p HashFn on the contained object.
+	 * @brief The hash code obtained by invoking an instance of @p HashFn on the contained object.
+	 * 
+	 * This member data member is provided primarilly so that lookup in an AnySet instance can "fail fast".
+	 * Mismatched `hash` values can indicate object inequality and elide the need to access the contained
+	 * object, which requires virtual dispatch.
 	 */
 	const std::size_t hash;
 private:
@@ -641,7 +662,7 @@ std::unique_ptr<AnyValue<H, C>> make_any_value(H hasher, Args&& ... args)
 }
 
 
-/// @name Casts and Accessors
+/// @name Casts 
 /// @{
 
 /**
@@ -675,8 +696,6 @@ std::unique_ptr<AnyValue<H, C>> make_any_value(H hasher, Args&& ... args)
  *
  * @see exact_cast()
  * @see unsafe_cast()
- * @see try_as()
- * @see as()
  * @see AnyValue
  *
  * @relates AnyValue
@@ -724,8 +743,6 @@ To polymorphic_cast(const AnyValue<H, C>& any_v)
  *
  * @see exact_cast()
  * @see unsafe_cast()
- * @see try_as()
- * @see as()
  * @see AnyValue
  *
  * @relates AnyValue
@@ -762,8 +779,6 @@ To polymorphic_cast(const AnyValue<H, C>* any_v)
  *
  * @see polymorphic_cast()
  * @see unsafe_cast()
- * @see try_as()
- * @see as()
  * @see AnyValue
  *
  * @relates AnyValue
@@ -793,8 +808,6 @@ To exact_cast(const AnyValue<H, C>& any_v)
  *
  * @see polymorphic_cast()
  * @see unsafe_cast()
- * @see try_as()
- * @see as()
  * @see AnyValue
  *
  * @relates AnyValue
@@ -827,12 +840,11 @@ To exact_cast(const AnyValue<H, C>* any_v)
  * 
  * @param any_v - The AnyValue instance whose contained object is to be accessed.
  * 
- * @return A pointer to the contained object of type T.
+ * @return A reference to the contained object if `To` is a reference type, or a 
+ *         copy if `To` is a non-reference type
  *
  * @see exact_cast()
  * @see polymorphic_cast()
- * @see try_as()
- * @see as()
  * @see AnyValue
  * 
  * @relates AnyValue
@@ -843,6 +855,11 @@ To unsafe_cast(const AnyValue<H, C>& any_v)
 	return static_cast<const detail::TypedValue<std::decay_t<To>, H, C>&>(any_v).value();
 }
 
+/// @} Casts
+
+/// @name Higher-Level Accessors
+/// @{
+
 /**
  * @brief Get a pointer to the contained object of type T.  If the contained object is not
  *        an instance of type T, returns nullptr.
@@ -851,15 +868,17 @@ To unsafe_cast(const AnyValue<H, C>& any_v)
  *        by a `te::polymorphic_cast<const T*>(&self)` if the exact_cast() failed.  The polymorphic_cast() 
  *        is only attempted if @p T is a non-final class type.
  *
+ * @tparam T - The type of the contained value, absent of reference (&) or const/volatile qualifiers.
+ *
  * @param any_v - The AnyValue instance whose contained object is to be accessed.
  *
  * @return A pointer of type `const T*` to the contained object if the contained object
  *         has type `T`, otherwise null.
  *
- * @see exact_cast()
- * @see polymorphic_cast()
- * @see unsafe_cast()
  * @see as()
+ * @see get()
+ * @see get_default_ref()
+ * @see get_default_val()
  * @see AnyValue
  *
  * @relates AnyValue
@@ -886,16 +905,18 @@ const T* try_as(const AnyValue<H, C>& any_v)
  *        a polymorphic_cast().  The polymorphic_cast() is only attempted if @p T is a non-final class
  *        type.  
  *
+ * @tparam T - The type of the contained value, absent of reference (&) or const/volatile qualifiers.
+ *
  * @param any_v - The AnyValue instance whose contained object is to be accessed.
  *
  * @return A reference of type `const T&` to the contained object.
  *
  * @throws std::bad_cast
  *
+ * @see get()
  * @see try_as()
- * @see exact_cast()
- * @see polymorphic_cast()
- * @see unsafe_cast()
+ * @see get_default_ref()
+ * @see get_default_val()
  * @see AnyValue
  *
  * @relates AnyValue
@@ -917,8 +938,10 @@ bool is(const AnyValue<H, C>& any_v)
  * Equivalent to as().
  *
  * @see as()
+ * @see try_as()
  * @see get_default_ref()
  * @see get_default_val()
+ * @see AnyValue
  *
  * @relates AnyValue
  */
@@ -940,7 +963,7 @@ const T& get(const AnyValue<H, C>& any_v)
  *       to `T`.  See [this talk](https://youtu.be/3MB2iiCkGxg?t=762) for further details
  *       and justification.
  *
- * @tparam T - The type to access, absent of reference (&) or const/volatile qualifiers.
+ * @tparam T - The type of the contained value, absent of reference (&) or const/volatile qualifiers.
  *
  * @param any_v       - The AnyValue instance whose contained object is being accessed.
  * @param default_ref - An lvalue reference to an object of type `T` which will be returned
@@ -949,8 +972,11 @@ const T& get(const AnyValue<H, C>& any_v)
  * @return A const reference to the object of type `T` contained in `any_v`, or `default_ref`
  *         if `any_v` does not contain an object of type `T`.
  *
+ * @see as()
  * @see get()
+ * @see try_as()
  * @see get_default_val()
+ * @see AnyValue
  *
  * @relates AnyValue
  */
@@ -998,13 +1024,16 @@ const std::decay_t<T>& get_default_ref(const AnyValue<H, C>& any_v, DefaultRef&&
  * @return If `any_v` contains an object of type `T`, returns a copy of the constained object,
  *         otherwise, returns an instance of type `T` constructed from `default_val`.
  *
+ * @see as()
  * @see get()
+ * @see try_as()
  * @see get_default_ref()
+ * @see AnyValue
  *
  * @relates AnyValue
  */
 template <class T, class H, class C, class DefaultVal>
-std::decay_t<T> get_default_val(const AnyValue<H, C>& any_v, DefaultVal&& default_val)
+T get_default_val(const AnyValue<H, C>& any_v, DefaultVal&& default_val)
 {
 	static_assert(
 		std::is_same_v<T, std::decay_t<T>>, 
@@ -1027,7 +1056,8 @@ std::decay_t<T> get_default_val(const AnyValue<H, C>& any_v, DefaultVal&& defaul
 		return static_cast<T>(std::forward<DefaultVal>(default_val));
 }
 
-/// @} Casts and Accessors
+/// @} Higher-Level Accessors
+
 
 } /* namespace te */	
 

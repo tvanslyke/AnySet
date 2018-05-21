@@ -19,8 +19,7 @@
  * ##  [Main Project Page](https://github.com/tvanslyke/AnySet)
  * ### [Tutorial](https://github.com/tvanslyke/AnySet/doc/tutorial)
  *
- * te::AnySet is a [std::unordered_set](http://en.cppreference.com/w/cpp/container/unordered_set)-like 
- * container that can hold instances of any constructible type.
+ * te::AnySet is a std::unordered_set -like container that can hold instances of any constructible type.
  *
  * The [tutorial](https://github.com/tvanslyke/AnySet/tree/master/doc/tutorial) on the main project page 
  * provides examples and is a good starting point for working with AnySet and its surrounding infrastructure.
@@ -76,7 +75,7 @@ inline constexpr const bool is_iterator_v = is_iterator<T>::value;
  * [UnorderedAssociativeContainer](http://en.cppreference.com/w/cpp/concept/UnorderedAssociativeContainer).
  * 
  * @remark In order to provide certain functionality functionality and mimic the behavior of similar standard
- *         containers (such as std::unordered_set<>), AnySet must sacrifice some static type safety in the name
+ *         containers (such as std::unordered_set), AnySet must sacrifice some static type safety in the name
  *         of usability.  For example, AnySet instances are always copy constructible.  However, if an attempt 
  *         is made to copy construct or assign (or similar) from an AnySet instance that contains instances of 
  *         non-copy-constructible types, an exception is thrown.  

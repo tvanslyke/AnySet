@@ -42,9 +42,7 @@ set = {"One"s, "Two"s, "Three"s, "Four"s, "Five"s};
 Construct from an iterator range.
 ```c++
 using std::literals;
-std::vector<std::string> names {
-	"Albert"s, "Becky"s, "Thomas"s, "Noel"s, "Alexis"s
-};
+std::vector<std::string> names {"Albert"s, "Becky"s, "Thomas"s, "Noel"s, "Alexis"s};
 te::AnySet<> set(names.begin(), names.end());
 // set == {"Albert"s, "Becky"s, "Thomas"s, "Noel"s, "Alexis"s}
 ```
@@ -53,16 +51,14 @@ te::AnySet<> set(names.begin(), names.end());
 Construct from a `std::tuple`.
 ```c++
 using std::literals;
-te::AnySet<> set(
-	std::forward_as_tuple("Some String"s, 3.141592, 100, std::bitset<3>(0b010u))
-);
+te::AnySet<> set(std::forward_as_tuple("Some String"s, 3.141592, 100, std::bitset<3>(0b010u)));
 // set == {"Some String"s, 3.141592, 100, std::bitset<3>(0b010u)}
 ```
 
 Constructing from a parameter pack:
 ```c++
-te::AnySet<> set(te::make_anyset(std::forward<Args>(args)...));
-// set == {args...};
+te::AnySet<> set = te::make_anyset("Some String"s, 3.141592, 100, std::bitset<3>(0b010u));
+// set == {"Some String"s, 3.141592, 100, std::bitset<3>(0b010u)}
 ```
 
 # Adding and Removing Elements
@@ -191,7 +187,7 @@ auto pos = set.find("Some String"s);
 pos = set.erase(pos);
 // set == {3.141592, 100, std::bitset<3>(0b010u)}
 
-if(pos != set.end())
+if(pos != set.end()) // `pos` might now be past-the-end
 	std::cout << "Element after 'Some String': " << *pos << std::endl;
 else
 	std::cout << "'Some String' was at the end of the set" << std::endl;
@@ -218,8 +214,8 @@ auto count = set.erase(100);
 assert(count == 0u); // == 0u because 100 was not in the set
 
 count = set.erase(3.1415);
-assert(count == 1u); // == 1u because 3.1415 was the last element in the set
-assert(set.empty());
+assert(count == 1u); // == 1u because 3.1415 in the set
+assert(set.empty()); // We erased the last element, the set is now empty.
 ```
 
 To completely clear the set, use the `.clear()` method:
@@ -227,6 +223,8 @@ To completely clear the set, use the `.clear()` method:
 auto set = te::make_anyset("Some String"s, 3.1415, 100, std::bitset<4>(0b0101u));
 set.clear();
 // set == {}
+
+assert(set.empty());
 ```
 
 ## Interset Operations
@@ -370,17 +368,24 @@ else
 use(*p);
 
 // We also know that `pos` is valid because it either points to `*p` or an object 
-// equal to `*p` (in this case, it just points to `*p`
+// equal to `*p` that already exists in `set2` (in this case, it just points to `*p`)
 
-// duplicate the node at `pos` in `set2` and add it to `set1`
+// duplicate value at `pos` in `set2` as a node and add it to `set1`.  In this example
+// its simply a duplicate of "Some String"s
 std::tie(node, pos) = set1.push(set2.dup(pos));
 // set1 == {"Some String"s, 3.1415, 100, std::bitset<4>(0b0101u)}
 // set2 == {"Some String"s}
 
+// `node` is null because the `set1.push()` call was successful
 assert(!node);
+// `pos` points to the "Some String"s element in `set1` that we created when
+// we called `set2.dup()`
 assert(*pos == "Some String"s);
+// Both sets contain a string that is equal to "Some String"s
 assert(set1.contains("Some String"s));
 assert(set2.contains("Some String"s));
+// Both sets contain AnyValue instances equal to the value contained 
+// by the AnyValue instance pointed to by `pos` ("Some String"s)
 assert(set1.contains_value(*pos));
 assert(set2.contains_value(*pos));
 ```
@@ -412,9 +417,9 @@ Outputs:
 The `.contains()`, `.contains_eq()`, `.contains_value()`, `.contains_value_eq()`, and `.count()` methods can be used to query whether a set contains a given value.
 
 ### `.contains()` and `.contains_eq()`
-Use the `.contains()` method to check if an element in the set compares equal to the given value using the `te::AnySet<HashFn, KeyEqual, Allocator>` instance's `KeyEqual` comparison function object.  The `.contains_eq()` method overrides this behavior and uses `operator==()` to compare the objects (by default, the comparison object is `std::equal_to<>`; in this case, both methods are semantically equivalent).
+Use the `.contains()` method to check if an element in the set compares equal to the given value using the `te::AnySet<HashFn, KeyEqual, Allocator>` instance's `KeyEqual` comparison function object.  The `.contains_eq()` method has similar behavior, but instead uses `operator==()` to compare the objects (by default, the comparison object is for AnySet is `std::equal_to<>`; in this case, both methods are semantically equivalent since `std::equal_to<>` just calls operator==()).
 
-The `.count()` method is equivalent to the `.countains()` method, except that its return type is `size_type` (returns either 0 or 1).
+The `.count()` method is equivalent to the `.contains()` method, except that its return type is `size_type` (returns either 0 or 1).
 
 **Example: Default behavior with std::equal_to<>**
 ```c++
@@ -624,40 +629,57 @@ std::size_t hash_value(const MyStringError& s)
 
  ...
 
-using H = te::AnyHash;
-using E = std::equal_to<>;
 using namespace std::literals;
 using namespace silly;
+using H = te::AnyHash;
+using E = std::equal_to<>;
 using any_t = te::AnyValue<H, E>;
+
+// example casting through a non-polymorphic inheritence heirarchy
 {
-	std::unique_ptr<any_t> my_string = 
-		te::make_any_value<MyString, H, E>(te::AnyHash{}, "Some string."s);
-	const auto& as_my_string = te::polymorphic_cast<const MyString&>(*my_string);
-	const auto& as_string = te::polymorphic_cast<const std::string&>(*my_string);
-	const auto& as_bitset = te::polymorphic_cast<const std::bitset<8>&>(*my_string);
-	std::cout << "std:string: " << as_string << '\n';
+	// make a set containing a `MyString` instance 
+	te::AnySet<> set = te::make_anyset(MyString("Some string."s));
+	// reference to the AnyValue instance holding the MyString we inserted
+	const any_t& my_string = *set.find(MyString("Some string."s))
+	// cast directly to MyString
+	const auto& as_my_string = te::polymorphic_cast<const MyString&>(my_string);
+	// cast to the `std::string` base class of MyString
+	const auto& as_string = te::polymorphic_cast<const std::string&>(my_string);
+	// cast to the `std::bitset<8>` base class of MyString
+	const auto& as_bitset = te::polymorphic_cast<const std::bitset<8>&>(my_string);
+	// print the string and the bitset base objects
+	std::cout << "string: " << as_string << '\n';
 	std::cout << "bitset<8>:  " << as_bitset << '\n' << std::endl;
 }
 {
-	std::unique_ptr<any_t> my_string = 
-		te::make_any_value<MyStringError, H, E>(te::AnyHash{}, "Some string error message."s);
-	const auto* as_my_string = te::polymorphic_cast<const MyString*>(my_string.get());
+	// make a set containing a `MyStringError` instance 
+	te::AnySet<> set = te::make_anyset(MyStringError("Some string error message."s));
+	// reference to the AnyValue instance holding the MyStringError we inserted
+	const any_t& my_string = *set.find(MyStringError("Some string error message."s));
+	// cast to the `MyString` base of MyStringError
+	const auto* as_my_string = te::polymorphic_cast<const MyString*>(&my_string);
+	// cast succeeded 
 	assert(static_cast<bool>(as_my_string));
-	const auto* as_string = te::polymorphic_cast<const std::string*>(my_string.get());
-	const auto* as_bitset = te::polymorphic_cast<const std::bitset<8>*>(my_string.get());
-	const auto* as_exception = te::polymorphic_cast<const std::exception*>(my_string.get());
-	std::cout << "std:string: " << *as_string << '\n';
+	// cast to the `std::string` indirect base class of MyStringError
+	const auto* as_string = te::polymorphic_cast<const std::string*>(&my_string);
+	// cast to the `std::bitset` indirect base class of MyStringError
+	const auto* as_bitset = te::polymorphic_cast<const std::bitset<8>*>(&my_string);
+	// cast to the `std::exception` indirect base class of MyStringError
+	const auto* as_exception = te::polymorphic_cast<const std::exception*>(&my_string);
+	// print the string and the bitset indirect base objects
+	std::cout << "string: " << *as_string << '\n';
 	std::cout << "bitset<8>:  " << *as_bitset << '\n';
+	// print the string returned by the call to `.what()` on the excpetion indirect base object
 	std::cout << ".what():    " << as_exception->what() << std::endl;
 }
 ```
 
 Outputs:
 ```
-std:string: Some string.
+string: Some string.
 bitset<8>:  00000000
 
-std:string: Some string error message.
+string: Some string error message.
 bitset<8>:  00000000
 .what():    Error: Some string error message.
 ```
@@ -821,9 +843,9 @@ namespace company {
 
 // The type we want to provide a hash function for
 struct Employee {
-	const std::size_t department_number;
-	const std::string first_name;
-	const std::string last_name;
+	std::size_t department_number;
+	std::string first_name;
+	std::string last_name;
 };
 
 // This overload makes `struct Employee` hashable by `te::AnyHash`
