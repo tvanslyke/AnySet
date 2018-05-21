@@ -17,7 +17,7 @@
  * @mainpage AnySet Docs
  * 
  * ##  [Main Project Page](https://github.com/tvanslyke/AnySet)
- * ### [Tutorial](https://github.com/tvanslyke/AnySet/doc/tutorial)
+ * ### [Tutorial](https://github.com/tvanslyke/AnySet/tree/master/doc/tutorial)
  *
  * te::AnySet is a std::unordered_set -like container that can hold instances of any constructible type.
  *
