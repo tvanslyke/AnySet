@@ -758,8 +758,6 @@ assert(dbl == -1.0); // any_v doesn't contain an 'double'; default '-1.0' is ret
 
 
 # Customizing AnyHash
-This method of customizing AnyHash's behavior should be preferred when the access to the namespace of the to-be-hashed type is prohibitted (such as providing a hash function definition for `std::vector`).
-
 The default hash function object type for `te::AnySet<>` is `te::AnyHash`.  This type is designed to make adding your own hash functions as painless as possible.  `te::AnyHash<>` is compatible with [Boost.ContainerHash](https://www.boost.org/doc/libs/1_67_0/doc/html/hash.html) out of the box (no boost headers are included; strictly an ADL-based approach) and it automatically absorbs all specializations of `std::hash<>`.
 
 The header [`extra-hash.h`](https://tvanslyke.github.io/AnySetDocs/extra-hash_8h.html) provides a minimal set of building blocks (again, compatible with Boost.ContainerHash) for writing hash functions for any type, plus a few "no brainer" specializations of `te::Hash` for standard types like `std::pair` (see the [relevant documentation](https://tvanslyke.github.io/AnySetDocs/extra-hash_8h.html) for details).
@@ -767,6 +765,8 @@ The header [`extra-hash.h`](https://tvanslyke.github.io/AnySetDocs/extra-hash_8h
 The primary methods of customizing `te::AnyHash`'s behavior follow:
 
 ## Template Specialization: Specializing te::Hash
+This method of customizing AnyHash's behavior should be preferred when the access to the namespace of the to-be-hashed type is prohibitted (such as providing a hash function definition for `std::vector`).
+
 `te::Hash<>` is a class template in the style of `std::hash<>`.  In fact, here is `te::Hash<>`'s implementation:
 ```c++
 namespace te {
