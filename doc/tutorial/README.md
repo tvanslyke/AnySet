@@ -1,29 +1,30 @@
 # AnySet Tutorials
 
-## [AnySet Documentation]()
+### [AnySet Documentation](https://tvanslyke.github.io/AnySetDocs)
 
 ## Contents
-1. [Constructing an AnySet object](#constructing-an-anyset-object)
+* [Constructing an AnySet object](#constructing-an-anyset-object)
     * [Initializing with Homogeneous Elements](#initializing-with-homogeneous-elements)
     * [Initializing with Heterogeneous Elements](#initializing-with-heterogeneous-elements)
-2. [Adding and Removing Elements](#adding-and-removing-elements)
-    * [Adding Non-Copy-Constructible Values](#adding-non-copy-constructible-values)
+* [Adding and Removing Elements](#adding-and-removing-elements)
     * [Adding Non-Copy-Constructible Values](#adding-non-copy-constructible-values)
     * [Adding Non-Movable Values](#adding-non-movable-values)
     * [Adding Several Values at Once](#adding-several-values-at-once)
     * [Removing Elements](#removing-elements)
     * [Interset Operations](#interset-operations)
-3. [Element Lookup and Similar Operations](#element-lookup-and-similar-operations)
+* [Element Lookup and Similar Operations](#element-lookup-and-similar-operations)
     * [Find an Element](#find-an-element)
     * [Check if an Object Exists](#check-if-an-object-exists)
-4. [Core Set-Theoretic Operations](#core-set-theoretic-operations)
-5. [AnyValue (AnySet's `value_type`)](#anyvalue-anysets-value_type)
+* [Core Set-Theoretic Operations](#core-set-theoretic-operations)
+* [AnyValue (AnySet's `value_type`)](#anyvalue-anysets-value_type)
     * [Accessing the Contained Value Statically](#accessing-the-contained-value-statically)
     * [Accessing the Contained Value Dynamically](#accessing-the-contained-value-dynamically)
     * [Higher-Level Accessors](#higher-level-accessors)
-6. [Customizing AnyHash](#customizing-anyhash)
+* [Customizing AnyHash](#customizing-anyhash)
     * [Template Specialization: Specializing te::Hash](#template-specialization-specializing-tehash)
     * [ADL: Overloading `hash_value()` at Namespace Scope](#adl-overloading-hash_value-at-namespace-scope)
+
+**Note**: This tutorial assumes that the reader has a decent grasp on the C++ standard library, particularly STL containers like std::vector and std::unordered_set.
 
 # Constructing an AnySet Object
 
@@ -45,7 +46,7 @@ std::vector<std::string> names {
 	"Albert"s, "Becky"s, "Thomas"s, "Noel"s, "Alexis"s
 };
 te::AnySet<> set(names.begin(), names.end());
-// set = {"Albert"s, "Becky"s, "Thomas"s, "Noel"s, "Alexis"s}
+// set == {"Albert"s, "Becky"s, "Thomas"s, "Noel"s, "Alexis"s}
 ```
 
 ## Initializing with Heterogeneous Elements
@@ -55,13 +56,13 @@ using std::literals;
 te::AnySet<> set(
 	std::forward_as_tuple("Some String"s, 3.141592, 100, std::bitset<3>(0b010u))
 );
-// set = {"Some String"s, 3.141592, 100, std::bitset<3>(0b010u)}
+// set == {"Some String"s, 3.141592, 100, std::bitset<3>(0b010u)}
 ```
 
 Constructing from a parameter pack:
 ```c++
 te::AnySet<> set(te::make_anyset(std::forward<Args>(args)...));
-// set = {args...};
+// set == {args...};
 ```
 
 # Adding and Removing Elements
@@ -154,6 +155,7 @@ assert(not inserted[2]);       // 100 already in the set; not inserted
 Sequences of same-type values can be inserted using both iterator range insertion and `initializer_list` insertion.
 ```c++ 
 std::vector<int> v{1, 2, 3, 4, 5};
+te::AnySet<> set;
 
 // use iterator range insertion
 auto count = set.insert(v.begin(), v.end());
@@ -174,7 +176,7 @@ assert(count == 2);
 count = set.insert({5, 6, 7, 8, 9, 10});
 // set == {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
 
-assert(count == 2);
+assert(count == 3);
 ```
 
 ## Removing Elements
@@ -184,7 +186,8 @@ The `.erase()` method can be used to remove elements from the set:
 auto set = te::make_anyset("Some String"s, 3.1415, 100, std::bitset<4>(0b0101u));
 auto pos = set.find("Some String"s);
 
-// iterator overload - returns iterator to element after the erased element
+// erase "Some String" at position indicated by the iterator 'pos'
+// iterator overload - returns iterator to the element after the erased element
 pos = set.erase(pos);
 // set == {3.141592, 100, std::bitset<3>(0b010u)}
 
@@ -193,17 +196,17 @@ if(pos != set.end())
 else
 	std::cout << "'Some String' was at the end of the set" << std::endl;
 
-// range erasure - returns iterator to the element after the last erased element
+// range erasure - returns an iterator to the element after the last erased element
 // erase all values but 3.1415:
 pos = set.find(3.1415);
 
 // erase elements before 3.1415
 pos = set.erase(set.begin(), pos);
-// set = {3.1415, ...}
+// set == {3.1415, ...}
 
 // erase elements after 3.1415
 set.erase(std::next(pos), set.end());
-// set = {3.1415}
+// set == {3.1415}
 
 assert(set.size() == 1);
 assert(*pos == 3.1415);
@@ -237,7 +240,7 @@ dest.update(src);
 // dest == {1, 2, 3, 4, 5, 6, 7, 8}
 // src == {4, 5, 6, 7, 8} (unmodified)
 ```
-**Note**: Attempting to copy non-copy-constructible values from `src` to `dest` via `.update()` will result in an exception being thrown.  See the [FIXME documentation]() for details.
+**Note**: Attempting to copy non-copy-constructible values from `src` to `dest` via `.update()` will result in an exception being thrown.  See the [relevant documentation](https://tvanslyke.github.io/AnySetDocs/structte_1_1AnySet.html) for details.
 
 ### Update (move)
 To move elements from one AnySet instance to another (effectively computing an inplace set union), use the `.update()` method with an rvalue:
@@ -305,18 +308,18 @@ else
 }
 ```
 
-The `.splice_or_copy()` methods are equivalent to the `.splice()` methods, except that if the source set (`set2` in the above examples) is not a non-const rvalue, the elements from the source set are copied, rather than moved.  This means that when the copying overloads are called, the source set is not modified.  It also means that if an attempt is made to copy a non-copy-constructible element from the source set, an exception will be thrown (much like `.update()`, see the [FIXME relevant documentation]() for details).
+The `.splice_or_copy()` methods are equivalent to the `.splice()` methods, except that if the source set (`set2` in the above examples) is not a non-const rvalue, the elements from the source set are copied, rather than moved.  This means that when the copying overloads are called, the source set is not modified.  It also means that if an attempt is made to copy a non-copy-constructible element from the source set, an exception will be thrown (much like `.update()`, see the [relevant documentation](https://tvanslyke.github.io/AnySetDocs/structte_1_1AnySet.html) for details).
 
 ### Node-Based Operations (.pop(), .dup(), and .push())
 Node-based operations present a lower-level interface to modifying AnySet instances at the single-node level.
 
-`.pop()` is semantically equivalent to the iterator overload of `.erase()`, except that it returns a `node_handle` instance (effectively a `std::unique_ptr<te::AnyValue<Hash, KeyEqual>>`) to the "erased" element (and an iterator to the following element).  As long as this node handle exists, pointers and references to the popped element are still valid (for the specifics of iterator invalidation, see the [FIXME relevant documentation]()).
+`.pop()` is semantically equivalent to the iterator overload of `.erase()`, except that it returns a `node_handle` instance (effectively a `std::unique_ptr<te::AnyValue<Hash, KeyEqual>>`) to the "erased" element (and an iterator to the following element).  As long as this node handle exists, pointers and references to the popped element are still valid (for the specifics of iterator invalidation, see the [relevant documentation](https://tvanslyke.github.io/AnySetDocs/structte_1_1AnySet.html)).
 
 `.push()` is the inverse operation to `.pop()`.  `.push()` takes a node handle and adds it to the AnySet instance if it doesn't already exist.  Pointers and references to the value contained in the `node_handle` are not invalidated by this operations so long as either:
 1. The value was successfully added.
 2. The value was not successfully added, but the returned `node_handle`'s lifetime has not ended.
 
-`.dup()` is similar to `.pop()`, except that it does not remove the element pointed-to by the iterator argument and instead returns a `node_handle` containing a copy of said element.  If the value contained in the pointed-to element is not copy-constructible, an exeption is thrown (much like `.splice_or_copy()`, see the [FIXME relevant documentation]() for details). 
+`.dup()` is similar to `.pop()`, except that it does not remove the element pointed-to by the iterator argument and instead returns a `node_handle` containing a copy of said element.  If the value contained in the pointed-to element is not copy-constructible, an exeption is thrown (much like `.splice_or_copy()`, see the [relevant documentation](https://tvanslyke.github.io/AnySetDocs/structte_1_1AnySet.html) for details). 
 
 ```c++
 using node_type = typename te::AnySet<>::node_handle;
@@ -499,7 +502,7 @@ assert(not other.contains_value_eq("abc"s)); // the actual values of the strings
 **Note**: Presently `.contains()` and `.contains_eq()` also behave this way when given an AnyValue instance.  This may be changed in the future in the name of not having a special case, so users should not rely on this.
 
 # Core Set-Theoretic Operations
-To enable [core set theoretic operations](https://en.wikipedia.org/wiki/Set_%28abstract_data_type%29#Core_set-theoretical_operations) and their corresponding operator overloads, include the header `SetOperations.h`:
+To enable [core set theoretic operations](https://en.wikipedia.org/wiki/Set_%28abstract_data_type%29#Core_set-theoretical_operations) and their corresponding operator overloads, include the header [`SetOperations.h`](https://tvanslyke.github.io/AnySetDocs/SetOperations_8h.html):
 ```c++
 #include "anyset/SetOperations.h"
 ```
@@ -706,7 +709,7 @@ assert(not i);
 
 
 ### `get_default_ref<T>()` and `get_default_val<T>()`
-`get_default_ref<T>()` is nearly identical to `as<T>()` except that instead of throwing a `std::bad_cast` on failure, returns a given 'default' value, by reference.  The default value must be an lvalue reference to an object of the same type as the target type.
+`get_default_ref<T>()` is nearly identical to `as<T>()` except that instead of throwing a `std::bad_cast` on failure, returns a given 'default' value, by reference.  The default value must be an lvalue reference to an object of the same type as the target type (see the [relevant documentation](https://tvanslyke.github.io/AnySetDocs/structte_1_1AnyValue.html) for details and justification of this).
 
 ```c++
 auto set = te::make_anyset("Some String"s, 3.1415, 100, std::bitset<4>(0b0101u));
@@ -744,11 +747,11 @@ std::string str = te::get_default_ref<std::string>(any_v, empty_str);
 assert(str == "Some String"s);
 
 // try to access 'any_v' as an 'int'
-const int& i = te::get_default_val<int>(any_v, -1);
+int i = te::get_default_val<int>(any_v, -1);
 assert(i == -1); // any_v doesn't contain an 'int'; default '-1' is returned 
 
 // compiles fine: default argument is convertible to 'double'
-const double& dbl = te::get_default_val<double>(any_v, -1);
+double dbl = te::get_default_val<double>(any_v, -1);
 
 assert(dbl == -1.0); // any_v doesn't contain an 'double'; default '-1.0' is returned 
 ```
@@ -759,7 +762,7 @@ This method of customizing AnyHash's behavior should be preferred when the acces
 
 The default hash function object type for `te::AnySet<>` is `te::AnyHash`.  This type is designed to make adding your own hash functions as painless as possible.  `te::AnyHash<>` is compatible with [Boost.ContainerHash](https://www.boost.org/doc/libs/1_67_0/doc/html/hash.html) out of the box (no boost headers are included; strictly an ADL-based approach) and it automatically absorbs all specializations of `std::hash<>`.
 
-The header `extra-hash.h` provides a minimal set of building blocks (again, compatible with Boost.ContainerHash) for writing hash functions for any type, plus a few "no brainer" specializations of `te::Hash` for standard types like `std::pair` (see the [FIXME relevant documentation]() for details).
+The header [`extra-hash.h`](https://tvanslyke.github.io/AnySetDocs/extra-hash_8h.html) provides a minimal set of building blocks (again, compatible with Boost.ContainerHash) for writing hash functions for any type, plus a few "no brainer" specializations of `te::Hash` for standard types like `std::pair` (see the [relevant documentation](https://tvanslyke.github.io/AnySetDocs/extra-hash_8h.html) for details).
 
 The primary methods of customizing `te::AnyHash`'s behavior follow:
 

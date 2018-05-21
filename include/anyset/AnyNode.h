@@ -1024,7 +1024,7 @@ std::decay_t<T> get_default_val(const AnyValue<H, C>& any_v, DefaultVal&& defaul
 	if(const T* p = try_as<T>(any_v); static_cast<bool>(p))
 		return *p;
 	else
-		return T(std::forward<DefaultVal>(default_val));
+		return static_cast<T>(std::forward<DefaultVal>(default_val));
 }
 
 /// @} Casts and Accessors
