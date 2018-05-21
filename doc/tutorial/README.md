@@ -21,8 +21,9 @@
     * [Accessing the Contained Value Statically](#accessing-the-contained-value-statically)
     * [Accessing the Contained Value Dynamically](#accessing-the-contained-value-dynamically)
     * [Higher-Level Accessors](#higher-level-accessors)
-6. [Customizing AnyHash](Customizing AnyHash)
-
+6. [Customizing AnyHash](#customizing-anyhash)
+    * [Template Specialization: Specializing te::Hash](#template-specialization-specializing-tehash)
+    * [ADL: Overloading `hash_value()` at Namespace Scope](#adl-overloading-hash_value-at-namespace-scope)
 
 # Constructing an AnySet Object
 
