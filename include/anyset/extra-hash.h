@@ -1,6 +1,10 @@
 #ifndef EXTRA_HASH_H
 #define EXTRA_HASH_H
 
+#ifdef _MSC_VER
+# include <iso646.h>
+#endif 
+
 #include <functional>
 #include <cstddef>
 #include <cstdint>

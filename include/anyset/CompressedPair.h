@@ -1,5 +1,10 @@
 #ifndef COMPRESSED_PAIR_H
 #define COMPRESSED_PAIR_H
+
+#ifdef _MSC_VER
+# include <iso646.h>
+#endif 
+
 #include "ValueHolder.h"
 
 namespace te {

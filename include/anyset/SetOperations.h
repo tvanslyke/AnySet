@@ -1,6 +1,10 @@
 #ifndef SET_OPERATIONS_H
 #define SET_OPERATIONS_H
 
+#ifdef _MSC_VER
+# include <iso646.h>
+#endif 
+
 #include "AnySet.h"
 #include <type_traits>
 

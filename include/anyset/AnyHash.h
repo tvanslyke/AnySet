@@ -1,6 +1,10 @@
 #ifndef ANY_HASH_H
 #define ANY_HASH_H
 
+#ifdef _MSC_VER
+# include <iso646.h>
+#endif 
+
 #include <functional>
 #include <cstddef>
 #include <type_traits>

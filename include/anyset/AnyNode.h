@@ -1,6 +1,10 @@
 #ifndef ANY_NODE_H
 #define ANY_NODE_H
 
+#ifdef _MSC_VER
+# include <iso646.h>
+#endif 
+
 #include <typeinfo>
 #include <cassert>
 #include <type_traits>

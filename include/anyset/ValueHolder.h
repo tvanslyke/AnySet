@@ -1,6 +1,10 @@
 #ifndef VALUE_HOLDER_H
 #define VALUE_HOLDER_H
 
+#ifdef _MSC_VER
+# include <iso646.h>
+#endif 
+
 #include <type_traits>
 
 namespace te {

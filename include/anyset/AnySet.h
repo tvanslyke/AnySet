@@ -1,6 +1,10 @@
 #ifndef ANY_SET_H
 #define ANY_SET_H
 
+#ifdef _MSC_VER
+# include <iso646.h>
+#endif 
+
 #include <functional>
 #include <cstddef>
 #include <cmath>

@@ -1,5 +1,10 @@
 #ifndef ANY_LIST_H
 #define ANY_LIST_H
+
+#ifdef _MSC_VER
+# include <iso646.h>
+#endif 
+
 #include "AnyNode.h"
 #include <iterator>
 #include <memory>
