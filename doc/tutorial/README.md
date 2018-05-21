@@ -21,7 +21,7 @@
     * [Accessing the Contained Value Statically](#accessing-the-contained-value-statically)
     * [Accessing the Contained Value Dynamically](#accessing-the-contained-value-dynamically)
     * [Higher-Level Accessors](#higher-level-accessors)
-
+6. [Customizing AnyHash](Customizing AnyHash)
 
 
 # Constructing an AnySet Object
@@ -750,6 +750,90 @@ assert(i == -1); // any_v doesn't contain an 'int'; default '-1' is returned
 const double& dbl = te::get_default_val<double>(any_v, -1);
 
 assert(dbl == -1.0); // any_v doesn't contain an 'double'; default '-1.0' is returned 
+```
+
+
+# Customizing AnyHash
+This method of customizing AnyHash's behavior should be preferred when the access to the namespace of the to-be-hashed type is prohibitted (such as providing a hash function definition for `std::vector`).
+
+The default hash function object type for `te::AnySet<>` is `te::AnyHash`.  This type is designed to make adding your own hash functions as painless as possible.  `te::AnyHash<>` is compatible with [Boost.ContainerHash](https://www.boost.org/doc/libs/1_67_0/doc/html/hash.html) out of the box (no boost headers are included; strictly an ADL-based approach) and it automatically absorbs all specializations of `std::hash<>`.
+
+The header `extra-hash.h` provides a minimal set of building blocks (again, compatible with Boost.ContainerHash) for writing hash functions for any type, plus a few "no brainer" specializations of `te::Hash` for standard types like `std::pair` (see the [FIXME relevant documentation]() for details).
+
+The primary methods of customizing `te::AnyHash`'s behavior follow:
+
+## Template Specialization: Specializing te::Hash
+`te::Hash<>` is a class template in the style of `std::hash<>`.  In fact, here is `te::Hash<>`'s implementation:
+```c++
+namespace te {
+
+template <class T = void>
+struct Hash: public std::hash<T> {}
+
+// void specialization in the style of <functional> header function objects
+template <>
+struct Hash<void> {
+	template <class T>
+	std::size_t operator()(const T& v) const 
+	{ return std::invoke(te::Hash<T>{}, v); }
+};
+
+} /* namespace te */
+```
+
+Users may specialize `te::Hash<>` for any type other than `void`.  For example, here's one way of defining a hash function for std::vector:
+```c++
+// for te::Hash
+#include "anyset/AnyHash.h"
+// for te::hash_combine
+#include "anyset/extra-hash.h"
+// for std::vector
+#include <vector>
+// for std::accumulate
+#include <algorithm>
+
+template <class T, class A>
+struct te::Hash<std::vector<T, A>> {
+	std::size_t operator()(const std::vector<T, A>& v) const
+	{
+		return std::accumulate(begin(v), end(v), std::size_t(0), 
+			[](const auto& l, const auto& r) {
+				using te::hash_value;
+				return te::hash_combine(hash_value(l), hash_value(r));
+			}
+		);
+	}
+};
+```
+
+## ADL: Overloading `hash_value()` at Namespace Scope
+When users are blessed with access to the enclosing namespace of the class being specialized, this method should be preferred.  This is also the method used by Boost.ContainerHash.
+
+Users can provide an overload of the free function `hash_value()` in the same namespace as the to-be-hashed type.  This overload will be found by ADL when calling `te::AnyHash::operator()`.
+
+For example:
+```c++
+namespace company {
+
+// The type we want to provide a hash function for
+struct Employee {
+	const std::size_t department_number;
+	const std::string first_name;
+	const std::string last_name;
+};
+
+// This overload makes `struct Employee` hashable by `te::AnyHash`
+std::size_t hash_value(const Employee& emp)
+{
+	using te::hash_value;
+	return te::hash_combine(
+		hash_value(emp.department_number),
+		hash_value(emp.first_name),
+		hash_value(emp.last_name)
+	);
+}
+
+} /* namespace company */
 ```
 
 

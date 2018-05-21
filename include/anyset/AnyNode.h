@@ -913,46 +913,6 @@ bool is(const AnyValue<H, C>& any_v)
 { return any_v.typeinfo() == typeid(T); }
 
 
-namespace detail {
-
-template <class T, class H, class C, class Visitor>
-bool visit_impl(Visitor&& visitor, const AnyValue<H, C>& any_v, std::ptrdiff_t& count)
-{
-	if(const T* p = exact_cast<const T*>(&any_v); static_cast<bool>(p))
-	{
-		std::invoke(std::forward<Visitor&&>(visitor), *p);
-		return true;
-	}
-	else
-	{
-		++count;
-		return false;
-	}
-}
-
-} /* namespace detail */
-
-/**
- * @brief Access the contained type through a visitor function object in the style of std::visit.
- * 
- * @tparam T ...  - The types to attempt to access @p any_v's contained object through.
- * 
- * @param visitor - A callable object that can accept a parameter of any of @p T.
- * @param any_v   - The AnyValue instance whose contained object is to be accessed by @p visitor.
- *
- * @relates AnyValue
- */
-template <class ... T, class Visitor, class H, class C>
-std::pair<std::decay_t<Visitor>, std::ptrdiff_t> visit(Visitor&& visitor, const AnyValue<H, C>& any_v)
-{
-	std::ptrdiff_t count = 0;
-	if(not (... or detail::visit_impl<T>(std::forward<Visitor>(visitor), any_v, count)))
-		count = -1;
-	return std::pair<std::decay_t<Visitor>, std::ptrdiff_t>(
-		std::forward<Visitor>(visitor), count
-	);
-}
-
 /**
  * Equivalent to as().
  *

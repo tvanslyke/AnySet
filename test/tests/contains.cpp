@@ -3,13 +3,10 @@
 struct SizeEquals {
 	template <class T, class U>
 	bool operator()(const T& l, const U& r) const
-	{
-		return l.size() == r.size();
-	}
+	{ return l.size() == r.size(); }
 };
 
-struct SizeHash
-{
+struct SizeHash {
 	template <class T>
 	std::size_t operator()(const T& v) const
 	{ return te::hash_value(v.size()); }

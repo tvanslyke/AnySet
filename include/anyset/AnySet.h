@@ -16,16 +16,14 @@
 /**
  * @mainpage AnySet Docs
  * 
- * ## [Main Project Page](https://github.com/tvanslyke/AnySet)
+ * ##  [Main Project Page](https://github.com/tvanslyke/AnySet)
+ * ### [Tutorial](https://github.com/tvanslyke/AnySet/doc/tutorial)
  *
  * te::AnySet is a [std::unordered_set](http://en.cppreference.com/w/cpp/container/unordered_set)-like 
- * container that can hold instances of any constructible type.  te::AnySet uses type erasure to store 
- * values of arbitrary types uniformly.
+ * container that can hold instances of any constructible type.
  *
- * te::AnySet intentionally mimics the interface of [std::unordered_set](http://en.cppreference.com/w/cpp/container/unordered_set),
- * providing member functions with the same name and semantics of many of the member functions of
- * [std::unordered_set](http://en.cppreference.com/w/cpp/container/unordered_set).  The primary difference
- * is that te::AnySet stores its contained objects inside of a wrapper class te::AnyValue.
+ * The [tutorial](https://github.com/tvanslyke/AnySet/doc/tutorial) on the main project page 
+ * provides examples and is a good starting point for working with AnySet and its surrounding infrastructure.
  *
  * ## Quick Reference
  * * te::AnySet - A type-erased hash set.
@@ -36,10 +34,6 @@
  *     * hash_value() - Customization point for te::AnyHash (compatible with boost::container_hash).
  *     * extra-hash.h - Utilities for building hash functions, intended to be compatible with boost::container_hash.
  *                      Also includes specializations of te::Hash for standard types like std::pair and std::tuple.
- *
- * Example Usage:
- * @include anyset.example.cpp
- * 
  */
 
 
