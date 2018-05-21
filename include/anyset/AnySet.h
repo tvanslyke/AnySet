@@ -89,7 +89,7 @@ inline constexpr const bool is_iterator_v = is_iterator<T>::value;
  *         the keyword 'new').  Allocator support is only provided for the internal bucket table.
  *
  * @see AnyValue - User-visible @p value_type for AnySet instances.
- * @see AnyHash  - The default value of HashFn.  It is intended to be sufficiently extensible such that users 
+ * @see AnyHash  - The default value of HashFn.  It %is intended to be sufficiently extensible such that users 
  *                 should not need to roll their own HashFn types.
  */
 template <
@@ -2445,11 +2445,12 @@ private:
 /**
  * @brief Helper function for creating an AnySet instance from a heterogeneous 
  *        sequence of objects.
- *
+ * 
+ * @tparam HashFn    - The type of the function object for the AnySet instance created. (optional)
+ * @tparam KeyEqual  - The type of the function object for the AnySet instance created. (optional)
+ * @tparam Allocator - The type of the allocator for the AnySet instance created. (optional)
+ * 
  * @param elements - Parameter pack of values to initialize the set's contents with.
- * @param hash_fn  - The hash function for the set.
- * @param key_eq   - The equality comparison function for the set.
- * @param alloc    - The allocator for the set.
  *
  * @return A newly-constructed AnySet instance that contains the provided elements.
  *
@@ -2461,16 +2462,10 @@ template <
 	class Allocator = std::allocator<te::AnyValue<HashFn, KeyEqual>>,
 	class ... Elements
 >
-te::AnySet<HashFn, KeyEqual, Allocator> make_anyset(
-	Elements&& ... elements,
-	const HashFn& hash_fn = HashFn(),
-	const KeyEqual& key_eq = KeyEqual(),
-	const Allocator& alloc = HashFn()
-)
+te::AnySet<HashFn, KeyEqual, Allocator> make_anyset(Elements&& ... elements)
 {
 	return te::AnySet<HashFn, KeyEqual, Allocator>(
-		std::forward_as_tuple(std::forward<Elements>(elements)...),
-		hash_fn, key_eq, alloc
+		std::forward_as_tuple(std::forward<Elements>(elements)...)
 	);
 }
 

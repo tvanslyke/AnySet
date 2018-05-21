@@ -52,6 +52,35 @@ TEST_CASE("Constructor", "[constructor]") {
 
 		{
 			std::array<int, 7> numbers{0, 1, 2, 3, 4, 5, 6};
+			any_set_t set(std::forward_as_tuple(0, 1, 2, 3, 4, 5, 6));
+			REQUIRE(std::is_permutation(numbers.begin(), numbers.end(), set.begin(), set.end(), std::equal_to<>{}));
+			REQUIRE(set.bucket_count() >= numbers.size());
+		}
+		{
+			std::array<int, 7> numbers{0, 1, 2, 3, 4, 5, 6};
+			any_set_t set(std::forward_as_tuple(0, 1, 2, 3, 4, 5, 6), 10, std::allocator<value_type>{});
+			REQUIRE(std::is_permutation(numbers.begin(), numbers.end(), set.begin(), set.end(), std::equal_to<>{}));
+			REQUIRE(set.bucket_count() >= 10u);
+			REQUIRE(set.bucket_count() >= numbers.size());
+		}
+		{
+			std::array<int, 7> numbers{0, 1, 2, 3, 4, 5, 6};
+			any_set_t set(std::forward_as_tuple(0, 1, 2, 3, 4, 5, 6), 20, AnyHash{}, std::allocator<value_type>{});
+			REQUIRE(std::is_permutation(numbers.begin(), numbers.end(), set.begin(), set.end(), std::equal_to<>{}));
+			REQUIRE(set.bucket_count() >= 20u);
+			REQUIRE(set.bucket_count() >= numbers.size());
+		}
+		{
+			std::array<int, 7> numbers{0, 1, 2, 3, 4, 5, 6};
+			any_set_t set(std::forward_as_tuple(0, 1, 2, 3, 4, 5, 6), 40, AnyHash{}, std::equal_to<>{}, std::allocator<value_type>{});
+			REQUIRE(std::is_permutation(numbers.begin(), numbers.end(), set.begin(), set.end(), std::equal_to<>{}));
+			REQUIRE(set.bucket_count() >= 40u);
+			REQUIRE(set.bucket_count() >= numbers.size());
+		}
+
+
+		{
+			std::array<int, 7> numbers{0, 1, 2, 3, 4, 5, 6};
 			any_set_t set(std::make_tuple(0, 1, 2, 3, 4, 5, 6));
 			REQUIRE(std::is_permutation(numbers.begin(), numbers.end(), set.begin(), set.end(), std::equal_to<>{}));
 			REQUIRE(set.bucket_count() >= numbers.size());
@@ -77,6 +106,9 @@ TEST_CASE("Constructor", "[constructor]") {
 			REQUIRE(set.bucket_count() >= 40u);
 			REQUIRE(set.bucket_count() >= numbers.size());
 		}
+
+
+
 		{
 			std::array<int, 7> numbers{0, 1, 2, 3, 4, 5, 6};
 			any_set_t set({0, 1, 2, 3, 4, 5, 6});
