@@ -3,6 +3,7 @@
 ### [AnySet Documentation](https://tvanslyke.github.io/AnySetDocs)
 
 ## Contents
+* [Headers](#headers)
 * [Constructing an AnySet object](#constructing-an-anyset-object)
     * [Initializing with Homogeneous Elements](#initializing-with-homogeneous-elements)
     * [Initializing with Heterogeneous Elements](#initializing-with-heterogeneous-elements)
@@ -25,6 +26,27 @@
     * [ADL: Overloading `hash_value()` at Namespace Scope](#adl-overloading-hash_value-at-namespace-scope)
 
 **Note**: This tutorial assumes that the reader has a decent grasp on the C++ standard library, particularly STL containers like std::vector and std::unordered_set.
+
+# Headers
+To use `te::AnySet`, include `anyset/AnySet.h`:
+```c++
+#include "anyset/AnySet.h"
+```
+
+[Core set-theoretic functions and operators](#core-set-theoretic-operations) are defined in the header [`anyset/SetOperations.h`](https://tvanslyke.github.io/AnySetDocs/SetOperations_8h.html):
+```c++
+#include "anyset/AnySet.h"
+```
+
+`te::AnyHash` and `te::Hash` are defined in `anyset/AnyHash.h`:
+```c++
+#include "anyset/AnyHash.h"
+```
+
+Extra hashing utilities are defined in [`anyset/extra-hash.h`](https://tvanslyke.github.io/AnySetDocs/extra-hash_8h.html):
+```c++
+#include "anyset/extra-hash.h"
+```
 
 # Constructing an AnySet Object
 
