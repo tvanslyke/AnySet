@@ -22,7 +22,7 @@
  * te::AnySet is a [std::unordered_set](http://en.cppreference.com/w/cpp/container/unordered_set)-like 
  * container that can hold instances of any constructible type.
  *
- * The [tutorial](https://github.com/tvanslyke/AnySet/doc/tutorial) on the main project page 
+ * The [tutorial](https://github.com/tvanslyke/AnySet/tree/master/doc/tutorial) on the main project page 
  * provides examples and is a good starting point for working with AnySet and its surrounding infrastructure.
  *
  * ## Quick Reference

@@ -1,12 +1,26 @@
-# AnySet
 [![Language](https://img.shields.io/badge/language-C++-blue.svg)](https://isocpp.org/) [![Standard](https://img.shields.io/badge/C%2B%2B-17-blue.svg)](https://en.wikipedia.org/wiki/C%2B%2B#Standardization) [![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+# AnySet
+AnySet is a type-erased hash set in the style of `std::unordered_map` written in C++17.
 
-## Documentation
-The documentation for AnySet can be found [here](https://tvanslyke.github.io/AnySetDocs/).
-* [te::AnySet Documentation](https://tvanslyke.github.io/AnySetDocs/structte_1_1AnySet.html)
-* [te::AnyValue Documentation](https://tvanslyke.github.io/AnySetDocs/structte_1_1AnyValue.html)
+In short, you can do neat stuff like this:
 
-### [Tutorials](doc/tutorial/README.md)
+```c++
+using namespace std::literals;
+te::AnySet<> set({"Add"s, "a"s, "few"s, "strings"s});
+// Or add some ints
+set.insert({1, 2, 3, 4});
+// Or just whatever
+set.insert("Hello"s, 1, 3.1415, std::bitset<3>{0b011u});
+// .contains() ... 
+assert(set.contains("Hello"s));
+// With the appropriate includes, you can even print it!
+std::cout << set << std::endl;
+// prints: {1, 3.1415, Add, 3, a, few, 011, 4, strings, 2, Hello}
+```
+
+See the [tutorial](doc/tutorial/README.md) page for in-depth usage examples and discussions of AnySet's features.
+
+See the [comprehensive documentation](https://tvanslyke.github.io/AnySetDocs/) for the details of its usage.
 
 ## Installation
 AnySet can be installed via the standard git-clone -> CMake -> make -> install procedure:
@@ -18,7 +32,7 @@ $ make
 $ make install
 ```
 
-### Prerequisites
+### Requirements
 Installing AnySet requires only CMake and git.  *Using* AnySet in a C++ project requires a C++17-compliant compiler (see [Supported Compilers and Standard Libraries](#supported-compilers-and-standard-libraries)).
 
 ### Running the Tests
