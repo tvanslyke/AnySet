@@ -884,7 +884,7 @@ public:
 	 * 
 	 * @return Maximum number of elements.
 	 */
-	bool max_size() const noexcept
+	size_type max_size() const noexcept
 	{ return std::numeric_limits<typename list_type::size_type>::max(); }
 
 	/// @}
